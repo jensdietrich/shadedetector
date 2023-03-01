@@ -1,0 +1,75 @@
+\documentclass{article}
+
+\usepackage{url}
+\usepackage{todonotes}
+
+
+\begin{document}
+
+
+\title{Dependency Shading in the Maven Ecosystem}
+
+
+\maketitle
+
+\abstract{
+Modern software heavily relies on the use of components. Those components are usually published  in central repositories, and managed by build systems via dependencies. Due to issues around vulnerabilities, licenses and the propagation of bugs, the study of those dependencies is of upmost importance, and new software composition analysis tools have emerged to deal with those challenges. 
+
+A particular challenge those tools phase is obfuscated dependencies that are the result of shading where code from a component is "inlined" into a client, and often moved into a different namespace. 
+
+We study the practice of shading, and how prevalent this is in the Maven ecosystem used by Java and other JVM languages (Kotlin, Scala, etc). We also present tooling to detect shaded dependencies. 
+
+}
+
+\section{Introduction}
+
+
+Modern software systems often use components to obtain economy of scale. The process is recursive -- components also use other components. This has create large networked software ecosystems, and this has in turn created new challenges. The prime example is vulnerability propagations, infamous examples include the \textit{equifax}~\cite{CVE-2017-5638,luszcz2018apache} and \textit{log4shell}~\cite{CVE-2021-44228,hiesgen2022race} incidents, with vulnerable and oudated components now being acknowledged as being a major security risk~\cite{owaspTop10A06}. 
+
+In response to those challenges, several commercial software composition analysis (SCA)  tools have emerged that scan the dependency networks, and cross-reference them with known vulnerabilities, in particular, the common vulnerability and exposure (CVE) database. If a vulnerable dependency is found, developers are notified (usually via pull requests) and can upgrade dependencies to a newer version. This is also beneficial for other reasons resulting from maintenance, such as bug fixes. Examples of such tools include GitHub's \textit{dependabot}~\footnote{\url{https://github.com/dependabot}}, \textit{snyk}~\footnote{\url{https://snyk.io/}},
+\textit{OWASP dependency check}~\footnote{\url{https://owasp.org/www-project-dependency-check/}}, 
+
+ tooling integrated into development environments such as IntelliJ's dependency analysis,  and features or plugins for build tools like \textit{npm audit} (for JavaScript) and sonatype's oss index Maven plugin~\footnote{\url{https://sonatype.github.io/ossindex-maven/maven-plugin/}}.
+ 
+ Those are static analysis tools, mainly based on the project metadata - declarations of dependencies in build files. Like all such tools they suffer from precision problems, i.e. false positives. They may for instance detect dependencies to vulnerable code in a  library that is not actually reachable. This could in principle be tackled by building more finegrained analyses , although the price (in terms of computational resources needed) is significant. 
+ 
+ But what is more  important for the discussion here is that those analyses are not sound, but merely \textit{soundy}~\cite{livshits2015defense}. I.e. those tools are mostly sound under certain assumptions, but there are known circumstances when those analyses produce false negatives, i.e., they miss dependencies and therefore problems such as vulnerabilities associated with those dependencies.
+ 
+ The first such pattern is late binding, i.e. applications that "discover" capabilities at runtime, leading to dependencies that are not visible in the build configurations or source code SCA tools analyse.  For Java, plugin-based application frameworks like \textit{OSGi} widely used in application servers and programming tools (Eclipse) facilitate this.  
+ 
+ A second cause of unsoundness is dependency shading. 
+
+
+\subsection{Research Questions}
+
+\begin{enumerate}
+	\item[RQ1]  How prevalent is shading in the Maven ecosystem ?  
+	\item[RQ2] How is shading done ?
+	\begin{enumerate}
+		\item[RQ2a] How prevalent is ad-hoc shading ?
+		\item[RQ2b] How common is relocation ?
+		\item[RQ2c] How common is partial shading ?
+	\end{enumerate}
+	\item[RQ3] Which libraries are commonly being shaded ? 
+	\item[RQ4] What are the reasons to use shading ?
+	\item[RQ5] What are the limitations of current tools with respect to shading ?
+	\item[RQ6] Can shaded dependencies be efficiently detected ? 
+\end{enumerate}
+
+
+\todo[inline] {Emanuel did some experiments for RQ5 using dependabot, synk, owasp and IntelliJ’s Dependency Analysis -- this is not in the final report, we can tidy this up / redo this easily}
+
+\section{Related Work}
+
+
+
+\section{Dataset Acquisition}
+
+
+
+\section{Acknowledgements}
+
+\bibliographystyle{plain}
+\bibliography{bibliography}
+
+\end{document}

@@ -1,12 +1,10 @@
 package nz.ac.wgtn.shadedetector;
 
 import org.junit.jupiter.api.*;
-
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 

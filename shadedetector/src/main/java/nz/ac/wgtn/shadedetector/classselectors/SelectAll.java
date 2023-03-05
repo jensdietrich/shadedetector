@@ -1,4 +1,6 @@
-package nz.ac.wgtn.shadedetector;
+package nz.ac.wgtn.shadedetector.classselectors;
+
+import nz.ac.wgtn.shadedetector.ClassSelector;
 
 import java.io.File;
 import java.util.ArrayList;

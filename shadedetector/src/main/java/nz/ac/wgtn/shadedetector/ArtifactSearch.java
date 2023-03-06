@@ -1,6 +1,7 @@
 package nz.ac.wgtn.shadedetector;
 
 import com.google.gson.Gson;
+import nz.ac.wgtn.shadedetector.classselectors.SelectClassesFromList;
 import nz.ac.wgtn.shadedetector.classselectors.SelectClassesWithUniqueNames;
 import okhttp3.*;
 import org.slf4j.Logger;
@@ -28,7 +29,11 @@ public class ArtifactSearch {
     public static void main (String[] args) throws ArtifactSearchException, IOException {
         // for testing only
         File commonsFolder = new File("src/test/resources/commons-collections4-4.0");
-        Map<String,ArtifactSearchResponse> results = findShadingArtifacts(Utils.listSourcecodeFilesInFolder(commonsFolder),new SelectClassesWithUniqueNames(),3,DEFAULT_ROWS_REQUESTED);
+
+        List<String> classList = Utils.loadClassListFromFile("classlists/ysoserial/commons-collections4-4.0/CommonsCollections2.list");
+        ClassSelector classSelector = new SelectClassesFromList(classList);
+
+        Map<String,ArtifactSearchResponse> results = findShadingArtifacts(Utils.listSourcecodeFilesInFolder(commonsFolder),classSelector,3,DEFAULT_ROWS_REQUESTED);
 
         LOGGER.info("Query results obtained: " + results.size());
 

@@ -1,0 +1,8 @@
+# see https://github.com/frohoff/ysoserial/blob/master/src/main/java/ysoserial/payloads/CommonsCollections5.java
+# commons-collections imports, package names removed
+Transformer
+ChainedTransformer
+ConstantTransformer
+InvokerTransformer
+TiedMapEntry
+LazyMap

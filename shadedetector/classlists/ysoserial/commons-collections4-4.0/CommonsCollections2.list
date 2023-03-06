@@ -1,0 +1,4 @@
+# see https://github.com/frohoff/ysoserial/blob/master/src/main/java/ysoserial/payloads/CommonsCollections2.java
+# commons-collections imports, package names removed
+TransformingComparator
+InvokerTransformer

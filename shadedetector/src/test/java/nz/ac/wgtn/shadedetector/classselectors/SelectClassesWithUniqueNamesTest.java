@@ -22,20 +22,21 @@ public class SelectClassesWithUniqueNamesTest {
         System.out.println("reading test data from file " + folder.getAbsolutePath());
 
         List<File> sources = Utils.listSourcecodeFilesInFolder(folder);
-        List<File> sortedSources = new SelectClassesWithUniqueNames().selectForSearch(sources);
+        List<String> sortedSources = new SelectClassesWithUniqueNames().selectForSearch(sources);
+        List<String> allSources = new SelectAll().selectForSearch(sources);
 
         // to test content
-        Set<File> sourcesAsSet = new HashSet(sources);
-        Set<File> sortedSourcesAsSet = new HashSet<>(sortedSources);
+        Set<String> sourcesAsSet = new HashSet(allSources);
+        Set<String> sortedSourcesAsSet = new HashSet<>(sortedSources);
 
         assertEquals(sortedSourcesAsSet,sortedSourcesAsSet);
 
         for (int i=1;i<sortedSources.size();i++) {
-            File src1 = sortedSources.get(i-1);
-            File src2 = sortedSources.get(i);
+            String className1 = sortedSources.get(i-1);
+            String className2 = sortedSources.get(i);
             assertTrue(
-        SelectClassesWithUniqueNames.tokenizeCamelCase(src1.getName()).length >=
-                SelectClassesWithUniqueNames.tokenizeCamelCase(src2.getName()).length);
+        SelectClassesWithUniqueNames.tokenizeCamelCase(className1).length >=
+                SelectClassesWithUniqueNames.tokenizeCamelCase(className2).length);
         }
     }
 }

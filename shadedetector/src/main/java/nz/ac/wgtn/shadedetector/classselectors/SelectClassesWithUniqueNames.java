@@ -13,14 +13,15 @@ import java.util.stream.Collectors;
 public class SelectClassesWithUniqueNames implements ClassSelector {
 
     @Override
-    public List<File> selectForSearch(List<File> sourceCodeList) {
-        final Map<File,Integer> ranks = new HashMap<>();
-        sourceCodeList.stream().forEach(
-            f -> {
-                ranks.put(f,tokenizeCamelCase(f.getName()).length);
+    public List<String> selectForSearch(List<File> sourceCodeList) {
+        final Map<String,Integer> ranks = new HashMap<>();
+        List<String> names = getNamesAsList(sourceCodeList);
+        names.stream().forEach(
+            name -> {
+                ranks.put(name,tokenizeCamelCase(name).length);
             }
         );
-        return sourceCodeList.stream()
+        return names.stream()
             .sorted(Comparator.comparingInt(ranks::get).reversed())
             .collect(Collectors.toList());
     }

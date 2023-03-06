@@ -12,7 +12,7 @@ import java.util.List;
  */
 public class SelectAll implements ClassSelector {
     @Override
-    public List<File> selectForSearch(List<File> sourceCodeList) {
-        return new ArrayList<>(sourceCodeList);
+    public List<String> selectForSearch(List<File> sourceCodeList) {
+        return getNamesAsList(sourceCodeList);
     }
 }

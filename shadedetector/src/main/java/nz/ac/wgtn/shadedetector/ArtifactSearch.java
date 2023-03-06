@@ -44,11 +44,10 @@ public class ArtifactSearch {
     }
 
     static Map<String,ArtifactSearchResponse> findShadingArtifacts (List<File> projectSources, ClassSelector classSelector, int maxClassesUsedForSearch, int batchSize) {
-        List<File> sourceFilesSelectedForSearch = classSelector.selectForSearch(projectSources);
-        List<File> cappedSourceFilesSelectedForSearch = sourceFilesSelectedForSearch.stream().limit(maxClassesUsedForSearch).collect(Collectors.toList());
+        List<String> classNamesSelectedForSearch = classSelector.selectForSearch(projectSources);
+        List<String> cappedClassNamesSelectedForSearch = classNamesSelectedForSearch.stream().limit(maxClassesUsedForSearch).collect(Collectors.toList());
         Map<String,ArtifactSearchResponse> responses = new HashMap<>();
-        for (File f:cappedSourceFilesSelectedForSearch) {
-            String className = f.getName().replace(".java","");
+        for (String className:cappedClassNamesSelectedForSearch) {
             LOGGER.info("querying for uses of class " + className);
             try {
                 responses.put(className, findShadingArtifacts(className, batchSize));

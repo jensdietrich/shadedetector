@@ -1,6 +1,8 @@
 package nz.ac.wgtn.shadedetector;
 
 public class ArtifactSearchException extends Exception {
+
+
     public ArtifactSearchException() {
     }
 

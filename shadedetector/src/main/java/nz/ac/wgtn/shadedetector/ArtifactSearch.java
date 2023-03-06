@@ -3,10 +3,14 @@ package nz.ac.wgtn.shadedetector;
 import com.google.gson.Gson;
 import nz.ac.wgtn.shadedetector.classselectors.SelectClassesWithUniqueNames;
 import okhttp3.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -15,6 +19,8 @@ import java.util.stream.Collectors;
  */
 public class ArtifactSearch {
 
+    private static Logger LOGGER = LoggerFactory.getLogger(ArtifactSearch.class);
+
     // https://search.maven.org/solrsearch/select?q=c:junit&rows=20&wt=json
     public static final String SEARCH_URL = "https://search.maven.org/solrsearch/select";
     public static final int DEFAULT_ROWS_REQUESTED = 200;  // maximum honoured, for larger numbers the API defaults back to 20
@@ -22,24 +28,40 @@ public class ArtifactSearch {
     public static void main (String[] args) throws ArtifactSearchException, IOException {
         // for testing only
         File commonsFolder = new File("src/test/resources/commons-collections4-4.0");
-        List<Artifact> artifacts = findShadingArtifacts(Utils.listSourcecodeFilesInFolder(commonsFolder),new SelectClassesWithUniqueNames(),3,DEFAULT_ROWS_REQUESTED);
+        Map<String,ArtifactSearchResponse> results = findShadingArtifacts(Utils.listSourcecodeFilesInFolder(commonsFolder),new SelectClassesWithUniqueNames(),3,DEFAULT_ROWS_REQUESTED);
+
+        LOGGER.info("Query results obtained: " + results.size());
+
+        List<Artifact> occurInAny = ArtifactSearchResultConsolidationStrategy.Merge.consolidate(results);
+        LOGGER.info("Artifacts occurring in any results: " + occurInAny.size());
+
+        List<Artifact> occurInAll = ArtifactSearchResultConsolidationStrategy.Intersect.consolidate(results);
+        LOGGER.info("Artifacts occurring in all results: " + occurInAll.size());
+
+        List<Artifact> occurInMultiple = ArtifactSearchResultConsolidationStrategy.MultipleOccurrences.consolidate(results);
+        LOGGER.info("Artifacts occurring in more than one results: " + occurInMultiple.size());
 
     }
 
-    static List<Artifact> findShadingArtifacts (List<File> projectSources, ClassSelector classSelector, int maxClassesUsedForSearch, int batchSize) throws ArtifactSearchException {
+    static Map<String,ArtifactSearchResponse> findShadingArtifacts (List<File> projectSources, ClassSelector classSelector, int maxClassesUsedForSearch, int batchSize) {
         List<File> sourceFilesSelectedForSearch = classSelector.selectForSearch(projectSources);
         List<File> cappedSourceFilesSelectedForSearch = sourceFilesSelectedForSearch.stream().limit(maxClassesUsedForSearch).collect(Collectors.toList());
+        Map<String,ArtifactSearchResponse> responses = new HashMap<>();
         for (File f:cappedSourceFilesSelectedForSearch) {
             String className = f.getName().replace(".java","");
-            List<Artifact> artifacts = findShadingArtifacts (className,batchSize);
-            System.out.println("artifacts matching " + className + ": " + artifacts.size());
+            LOGGER.info("querying for uses of class " + className);
+            try {
+                responses.put(className, findShadingArtifacts(className, batchSize));
+            }
+            catch (ArtifactSearchException x) {
+                LOGGER.error("artifact search for class " + className + " has failed",x);
+            }
         }
-        // todo merge consolidate
-        return null;
+        return responses;
 
     }
 
-    static List<Artifact> findShadingArtifacts (String className, int batchSize) throws ArtifactSearchException {
+    static ArtifactSearchResponse findShadingArtifacts (String className, int batchSize) throws ArtifactSearchException {
         OkHttpClient client = new OkHttpClient();
 
         HttpUrl.Builder urlBuilder = HttpUrl.parse(SEARCH_URL).newBuilder();
@@ -48,7 +70,7 @@ public class ArtifactSearch {
         urlBuilder.addQueryParameter("rows", ""+batchSize);
 
         String url = urlBuilder.build().toString();
-
+        LOGGER.info("\tsearch url: " + url);
         Request request = new Request.Builder().url(url).build();
 
         Call call = client.newCall(request);
@@ -60,14 +82,13 @@ public class ArtifactSearch {
         }
 
         int responseCode = response.code();
-        System.out.println("response code: " + responseCode);
+        LOGGER.info("\tresponse code is: " + responseCode);
 
         if (responseCode==200) {
             Reader reader = response.body().charStream();
-            ArtifactSearchResponse artifactResponse = read(reader);
-            List<Artifact> artifacts = artifactResponse.getBody().getArtifacts();
-            System.out.println("artifacts retrieved: " + artifacts.size());
-            return artifacts;
+            ArtifactSearchResponse result = read(reader);
+            LOGGER.info("\t" + result.getBody().getArtifacts().size() + " artifacts found");
+            return result;
         }
         else {
             throw new ArtifactSearchException("query returned unexpected status code " + responseCode);

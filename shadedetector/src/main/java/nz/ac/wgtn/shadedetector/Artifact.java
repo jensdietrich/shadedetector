@@ -1,12 +1,12 @@
 package nz.ac.wgtn.shadedetector;
 
 import com.google.gson.annotations.SerializedName;
-
 import java.util.List;
 import java.util.Objects;
 
 /**
  * Representation of a Maven artifact.
+ * Annotations are used to map this to JSON representation returned by the Maven REST API.
  * @author jens dietrich
  */
 public class Artifact {

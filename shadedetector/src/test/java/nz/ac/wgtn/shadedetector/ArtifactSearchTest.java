@@ -1,9 +1,9 @@
 package nz.ac.wgtn.shadedetector;
 
 import org.junit.jupiter.api.*;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
+
+import java.io.*;
+import java.net.URL;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -12,10 +12,16 @@ public class ArtifactSearchTest {
 
 
     private ArtifactSearchResponse response = null;
+    private File json = null;
+    private URL url = null;
 
     @BeforeEach
     public void setup() throws IOException {
-        try (Reader reader = new InputStreamReader(ArtifactSearchTest.class.getResourceAsStream("/queryresult.json"))) {
+        url = ArtifactSearchTest.class.getClassLoader().getResource("queryresult.json");
+        System.out.println("reading test data from url " + url);
+        json = new File(url.getFile());
+        System.out.println("reading test data from file " + json.getAbsolutePath());
+        try (Reader reader = new FileReader(json)) {
             response = ArtifactSearch.read(reader);
         }
     }
@@ -23,6 +29,8 @@ public class ArtifactSearchTest {
     @AfterEach
     public void tearDown() {
         response = null;
+        json = null;
+        url = null;
     }
 
     @Test
@@ -73,25 +81,25 @@ public class ArtifactSearchTest {
         assertEquals("bundle",artifact.getProjectType());
         assertEquals(1673251207000L,artifact.getTimestamp());
         assertEquals(List.of(
-                "-sources.jar",
-                ".pom",
-                "-javadoc.jar",
-                "-test-sources.jar",
-                ".jar"),
-                artifact.getResources());
+            "-sources.jar",
+            ".pom",
+            "-javadoc.jar",
+            "-test-sources.jar",
+            ".jar"),
+            artifact.getResources());
         assertEquals(List.of(
-                "based",
-                "osgi",
-                "found",
-                "confluence",
-                "detailed",
-                "service",
-                "wiki",
-                "ops4j",
-                "http",
-                "information",
-                "jetty",
-                "ayaz"),
-                artifact.getTags());
+            "based",
+            "osgi",
+            "found",
+            "confluence",
+            "detailed",
+            "service",
+            "wiki",
+            "ops4j",
+            "http",
+            "information",
+            "jetty",
+            "ayaz"),
+            artifact.getTags());
     }
 }

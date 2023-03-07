@@ -1,14 +1,13 @@
 package nz.ac.wgtn.shadedetector;
 
+import com.google.common.io.CharStreams;
 import com.google.gson.Gson;
 import nz.ac.wgtn.shadedetector.classselectors.SelectClassesFromList;
-import nz.ac.wgtn.shadedetector.classselectors.SelectClassesWithUniqueNames;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.io.File;
-import java.io.IOException;
-import java.io.Reader;
+
+import java.io.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +20,8 @@ import java.util.stream.Collectors;
 public class ArtifactSearch {
 
     private static Logger LOGGER = LoggerFactory.getLogger(ArtifactSearch.class);
+
+    private static File CACHE = new File(".cache");
 
     // https://search.maven.org/solrsearch/select?q=c:junit&rows=20&wt=json
     public static final String SEARCH_URL = "https://search.maven.org/solrsearch/select";
@@ -66,37 +67,66 @@ public class ArtifactSearch {
     }
 
     static ArtifactSearchResponse findShadingArtifacts (String className, int batchSize) throws ArtifactSearchException {
-        OkHttpClient client = new OkHttpClient();
+        Reader reader = getCachedOrFetch(className,batchSize);
+        ArtifactSearchResponse result = read(reader);
+        LOGGER.info("\t" + result.getBody().getArtifacts().size() + " artifacts found");
+        return result;
+    }
 
-        HttpUrl.Builder urlBuilder = HttpUrl.parse(SEARCH_URL).newBuilder();
-        urlBuilder.addQueryParameter("q", "c:"+className);
-        urlBuilder.addQueryParameter("wt", "json");
-        urlBuilder.addQueryParameter("rows", ""+batchSize);
-
-        String url = urlBuilder.build().toString();
-        LOGGER.info("\tsearch url: " + url);
-        Request request = new Request.Builder().url(url).build();
-
-        Call call = client.newCall(request);
-        Response response = null;
-        try {
-            response = call.execute();
-        } catch (IOException x) {
-            throw new ArtifactSearchException(x);
+    private static Reader getCachedOrFetch (String className, int batchSize) throws ArtifactSearchException {
+        if (!CACHE.exists()) {
+            CACHE.mkdirs();
+            LOGGER.info("created cache folder " + CACHE.getAbsolutePath());
         }
-
-        int responseCode = response.code();
-        LOGGER.info("\tresponse code is: " + responseCode);
-
-        if (responseCode==200) {
-            Reader reader = response.body().charStream();
-            ArtifactSearchResponse result = read(reader);
-            LOGGER.info("\t" + result.getBody().getArtifacts().size() + " artifacts found");
-            return result;
+        File cached = getCached(className,batchSize);
+        if (cached.exists()) {
+            LOGGER.info("using cached data from " + cached.getAbsolutePath());
         }
         else {
-            throw new ArtifactSearchException("query returned unexpected status code " + responseCode);
+            OkHttpClient client = new OkHttpClient();
+
+            HttpUrl.Builder urlBuilder = HttpUrl.parse(SEARCH_URL).newBuilder();
+            urlBuilder.addQueryParameter("q", "c:"+className);
+            urlBuilder.addQueryParameter("wt", "json");
+            urlBuilder.addQueryParameter("rows", ""+batchSize);
+
+            String url = urlBuilder.build().toString();
+            LOGGER.info("\tsearch url: " + url);
+            Request request = new Request.Builder().url(url).build();
+
+            Call call = client.newCall(request);
+            Response response = null;
+            try {
+                response = call.execute();
+            } catch (IOException x) {
+                throw new ArtifactSearchException(x);
+            }
+
+            int responseCode = response.code();
+            LOGGER.info("\tresponse code is: " + responseCode);
+
+            if (responseCode==200) {
+                try (Reader reader = response.body().charStream(); Writer writer = new FileWriter(cached)) {
+                    LOGGER.info("\tcaching data in " + cached.getAbsolutePath());
+                    CharStreams.copy(reader,writer);
+                }
+                catch (IOException x) {
+                    throw new ArtifactSearchException("cannot read and cache response" + x);
+                }
+            }
+            else {
+                throw new ArtifactSearchException("query returned unexpected status code " + responseCode);
+            }
         }
+        try {
+            return new FileReader(cached);
+        } catch (FileNotFoundException e) {
+            throw new ArtifactSearchException(e);
+        }
+    }
+
+    private static File getCached(String className, int batchSize) {
+        return new File(CACHE,className + "-" + batchSize + ".json");
     }
 
     static ArtifactSearchResponse read(Reader input) {

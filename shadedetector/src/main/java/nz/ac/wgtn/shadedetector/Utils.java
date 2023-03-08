@@ -3,7 +3,6 @@ package nz.ac.wgtn.shadedetector;
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.*;
 import java.net.URL;
 import java.nio.file.Files;
@@ -56,5 +55,13 @@ public class Utils {
             .filter(line -> !line.isBlank())
             .filter(line -> !line.trim().startsWith("#")) // remove comments
             .collect(Collectors.toList());
+    }
+
+    public static boolean isZip (File f) {
+        int fileSignature = 0;
+        try (RandomAccessFile raf = new RandomAccessFile(f, "r")) {
+            fileSignature = raf.readInt();
+        } catch (IOException e) {}
+        return fileSignature == 0x504B0304 || fileSignature == 0x504B0506 || fileSignature == 0x504B0708;
     }
 }

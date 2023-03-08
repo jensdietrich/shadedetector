@@ -6,7 +6,6 @@ import nz.ac.wgtn.shadedetector.classselectors.SelectClassesFromList;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.*;
 import java.util.HashMap;
 import java.util.List;
@@ -21,7 +20,7 @@ public class ArtifactSearch {
 
     private static Logger LOGGER = LoggerFactory.getLogger(ArtifactSearch.class);
 
-    private static File CACHE = new File(".cache");
+    private static File CACHE = new File(".cache/artifacts-using-classes");
 
     // https://search.maven.org/solrsearch/select?q=c:junit&rows=20&wt=json
     public static final String SEARCH_URL = "https://search.maven.org/solrsearch/select";
@@ -115,7 +114,7 @@ public class ArtifactSearch {
                 }
             }
             else {
-                throw new ArtifactSearchException("query returned unexpected status code " + responseCode);
+                throw new ArtifactSearchException("query returned unexpected status code " + responseCode + " - " + response.message() );
             }
         }
         try {

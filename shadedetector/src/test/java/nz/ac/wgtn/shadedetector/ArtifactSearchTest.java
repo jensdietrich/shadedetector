@@ -22,7 +22,7 @@ public class ArtifactSearchTest {
         json = new File(url.getFile());
         System.out.println("reading test data from file " + json.getAbsolutePath());
         try (Reader reader = new FileReader(json)) {
-            response = ArtifactSearch.read(reader);
+            response = ArtifactSearch.parse(reader);
         }
     }
 

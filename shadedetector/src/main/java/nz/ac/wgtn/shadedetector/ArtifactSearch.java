@@ -23,7 +23,8 @@ public class ArtifactSearch {
 
     private static Logger LOGGER = LoggerFactory.getLogger(ArtifactSearch.class);
 
-    private static File CACHE = new File(".cache/artifacts-using-classes");
+    private static File CACHE_BY_CLASSNAME = new File(".cache/artifacts-using-classes");
+    private static File CACHE_ARTIFACT_VERSIONS = new File(".cache/artifacts-versions");
 
     // https://search.maven.org/solrsearch/select?q=c:junit&rows=20&wt=json
     public static final String SEARCH_URL = "https://search.maven.org/solrsearch/select";
@@ -31,24 +32,30 @@ public class ArtifactSearch {
     public static final int BATCHES = 5; // will result in 1k results
 
     public static void main (String[] args) throws ArtifactSearchException, IOException {
-        // for testing only
-        File commonsFolder = new File("src/test/resources/commons-collections4-4.0");
+        // for testing only -- query by class name
+//        File commonsFolder = new File("src/test/resources/commons-collections4-4.0");
+//
+//        List<String> classList = Utils.loadClassListFromFile("classlists/ysoserial/commons-collections4-4.0/CommonsCollections2.list");
+//        ClassSelector classSelector = new SelectClassesFromList(classList);
+//
+//        Map<String,ArtifactSearchResponse> results = findShadingArtifacts(Utils.listSourcecodeFilesInFolder(commonsFolder),classSelector,3,BATCHES,ROWS_PER_BATCH);
+//
+//        LOGGER.info("Query results obtained: {}",results.size());
+//
+//        List<Artifact> occurInAny = ArtifactSearchResultConsolidationStrategy.Merge.consolidate(results);
+//        LOGGER.info("Artifacts occurring in any results: {}",occurInAny.size());
+//
+//        List<Artifact> occurInAll = ArtifactSearchResultConsolidationStrategy.Intersect.consolidate(results);
+//        LOGGER.info("Artifacts occurring in all results: {}",occurInAll.size());
+//
+//        List<Artifact> occurInMultiple = ArtifactSearchResultConsolidationStrategy.MultipleOccurrences.consolidate(results);
+//        LOGGER.info("Artifacts occurring in more than one results: {}",occurInMultiple.size());
 
-        List<String> classList = Utils.loadClassListFromFile("classlists/ysoserial/commons-collections4-4.0/CommonsCollections2.list");
-        ClassSelector classSelector = new SelectClassesFromList(classList);
+        // for testing only -- query versions
 
-        Map<String,ArtifactSearchResponse> results = findShadingArtifacts(Utils.listSourcecodeFilesInFolder(commonsFolder),classSelector,3,BATCHES,ROWS_PER_BATCH);
+        ArtifactSearchResponse results = findVersions("org.apache.commons","commons-collections4",1,ROWS_PER_BATCH);
+        LOGGER.info("Versions found: {}",results.getBody().getArtifacts().size());
 
-        LOGGER.info("Query results obtained: " + results.size());
-
-        List<Artifact> occurInAny = ArtifactSearchResultConsolidationStrategy.Merge.consolidate(results);
-        LOGGER.info("Artifacts occurring in any results: " + occurInAny.size());
-
-        List<Artifact> occurInAll = ArtifactSearchResultConsolidationStrategy.Intersect.consolidate(results);
-        LOGGER.info("Artifacts occurring in all results: " + occurInAll.size());
-
-        List<Artifact> occurInMultiple = ArtifactSearchResultConsolidationStrategy.MultipleOccurrences.consolidate(results);
-        LOGGER.info("Artifacts occurring in more than one results: " + occurInMultiple.size());
 
     }
 
@@ -70,19 +77,27 @@ public class ArtifactSearch {
     }
 
     static ArtifactSearchResponse findShadingArtifacts (String className, int batchCount,int maxResultsInEachBatch) throws ArtifactSearchException {
-        List<File> cachedResultFiles = getCachedOrFetch(className,batchCount,maxResultsInEachBatch);
+        List<File> cachedResultFiles = getCachedOrFetchByClass(className,batchCount,maxResultsInEachBatch);
         List<ArtifactSearchResponse> results = cachedResultFiles.stream().map(f -> parse(f)).collect(Collectors.toList());
         ArtifactSearchResponse result = ArtifactSearchResponseMerger.merge(results);
-        LOGGER.info("\t" + result.getBody().getArtifacts().size() + " artifacts found");
+        LOGGER.info("\t{} artifacts found with a class named \"{}\"",result.getBody().getArtifacts().size(),className);
         return result;
     }
 
-    private static List<File> getCachedOrFetch (String className, int batchCount, int maxResultsInEachBatch) throws ArtifactSearchException {
-        if (!CACHE.exists()) {
-            CACHE.mkdirs();
-            LOGGER.info("created cache folder " + CACHE.getAbsolutePath());
+    static ArtifactSearchResponse findVersions (String groupName, String artifactName, int batchCount,int maxResultsInEachBatch) throws ArtifactSearchException {
+        List<File> cachedResultFiles = getCachedOrFetchByGroupAndArtifactId(groupName,artifactName,batchCount,maxResultsInEachBatch);
+        List<ArtifactSearchResponse> results = cachedResultFiles.stream().map(f -> parse(f)).collect(Collectors.toList());
+        ArtifactSearchResponse result = ArtifactSearchResponseMerger.merge(results);
+        LOGGER.info("\t{} versions found of \"{}:{}",result.getBody().getArtifacts().size(),groupName,artifactName);
+        return result;
+    }
+
+    private static List<File> getCachedOrFetchByClass(String className, int batchCount, int maxResultsInEachBatch) throws ArtifactSearchException {
+        if (!CACHE_BY_CLASSNAME.exists()) {
+            CACHE_BY_CLASSNAME.mkdirs();
+            LOGGER.info("created cache folder {}",CACHE_BY_CLASSNAME.getAbsolutePath());
         }
-        List<File> cached = getCached(className);
+        List<File> cached = getCachedByClassName(className);
         if (!cached.isEmpty()) {
             LOGGER.info("using cached data from " + cached.stream().map(f -> f.getAbsolutePath()).collect(Collectors.joining(", ")));
         }
@@ -90,10 +105,67 @@ public class ArtifactSearch {
             OkHttpClient client = new OkHttpClient();
             cached = new ArrayList<>();
             for (int i=0;i<batchCount;i++) {
-                LOGGER.info("\tfetching batch " + (i+1) + "/" + batchCount);
+                LOGGER.info("\tfetching batch {}/{}",i+1,batchCount);
 
                 HttpUrl.Builder urlBuilder = HttpUrl.parse(SEARCH_URL).newBuilder();
                 urlBuilder.addQueryParameter("q", "c:" + className);
+                urlBuilder.addQueryParameter("wt", "json");
+                urlBuilder.addQueryParameter("rows", "" + maxResultsInEachBatch);
+                urlBuilder.addQueryParameter("start",""+((maxResultsInEachBatch*i)+1));
+
+                String url = urlBuilder.build().toString();
+                LOGGER.info("\tsearch url: {}", url);
+                Request request = new Request.Builder().url(url).build();
+
+                Call call = client.newCall(request);
+                Response response = null;
+                try {
+                    response = call.execute();
+                } catch (IOException x) {
+                    throw new ArtifactSearchException(x);
+                }
+
+                int responseCode = response.code();
+                LOGGER.info("\tresponse code is: {}", responseCode);
+
+                if (responseCode == 200) {
+                    File cache = new File(CACHE_BY_CLASSNAME,className+'-'+(i+1)+".json");
+                    try (Reader reader = response.body().charStream(); Writer writer = new FileWriter(cache)) {
+                        LOGGER.info("\tcaching data in {}",cache.getAbsolutePath());
+                        CharStreams.copy(reader, writer);
+                        cached.add(cache);
+                    } catch (IOException x) {
+                        throw new ArtifactSearchException("cannot read and cache response" + x);
+                    }
+                } else {
+                    throw new ArtifactSearchException("query returned unexpected status code " + responseCode + " - " + response.message());
+                }
+            }
+        }
+        return cached;
+    }
+
+
+    private static List<File> getCachedOrFetchByGroupAndArtifactId(String groupId,String artifactId, int batchCount, int maxResultsInEachBatch) throws ArtifactSearchException {
+        if (!CACHE_ARTIFACT_VERSIONS.exists()) {
+            CACHE_ARTIFACT_VERSIONS.mkdirs();
+            LOGGER.info("created cache folder " + CACHE_ARTIFACT_VERSIONS.getAbsolutePath());
+        }
+        List<File> cached = getCachedByGroupAndArtifactId(groupId,artifactId);
+        if (!cached.isEmpty()) {
+            LOGGER.info("using cached data from " + cached.stream().map(f -> f.getAbsolutePath()).collect(Collectors.joining(", ")));
+        }
+        else {
+            OkHttpClient client = new OkHttpClient();
+            cached = new ArrayList<>();
+            for (int i=0;i<batchCount;i++) {
+                LOGGER.info("\tfetching batch {}/{}",i+1,batchCount);
+
+                // https://search.maven.org/solrsearch/select?q=g:com.google.inject+AND+a:guice&core=gav&rows=20&wt=json
+                // from https://central.sonatype.org/search/rest-api-guide/
+                HttpUrl.Builder urlBuilder = HttpUrl.parse(SEARCH_URL).newBuilder();
+                urlBuilder.addQueryParameter("q", "g:" + groupId + " AND " + "a:" + artifactId);
+                urlBuilder.addQueryParameter("core","gav");
                 urlBuilder.addQueryParameter("wt", "json");
                 urlBuilder.addQueryParameter("rows", "" + maxResultsInEachBatch);
                 urlBuilder.addQueryParameter("start",""+((maxResultsInEachBatch*i)+1));
@@ -111,12 +183,12 @@ public class ArtifactSearch {
                 }
 
                 int responseCode = response.code();
-                LOGGER.info("\tresponse code is: " + responseCode);
+                LOGGER.info("\tresponse code is: {}",responseCode);
 
                 if (responseCode == 200) {
-                    File cache = new File(CACHE,className+'-'+(i+1)+".json");
+                    File cache = new File(CACHE_ARTIFACT_VERSIONS,groupId+':'+artifactId+'-'+(i+1)+".json");
                     try (Reader reader = response.body().charStream(); Writer writer = new FileWriter(cache)) {
-                        LOGGER.info("\tcaching data in " + cache.getAbsolutePath());
+                        LOGGER.info("\tcaching data in {}",cache.getAbsolutePath());
                         CharStreams.copy(reader, writer);
                         cached.add(cache);
                     } catch (IOException x) {
@@ -130,9 +202,16 @@ public class ArtifactSearch {
         return cached;
     }
 
-    private static List<File> getCached(String className) {
+    private static List<File> getCachedByClassName(String className) {
         Pattern p = Pattern.compile(className+"-\\d+\\.json");
-        return Stream.of(CACHE.listFiles())
+        return Stream.of(CACHE_BY_CLASSNAME.listFiles())
+            .filter(f -> p.matcher(f.getName()).matches())
+            .collect(Collectors.toList());
+    }
+
+    private static List<File> getCachedByGroupAndArtifactId(String groupId,String artifactId) {
+        Pattern p = Pattern.compile(groupId+':'+artifactId+"-\\d+\\.json");
+        return Stream.of(CACHE_BY_CLASSNAME.listFiles())
             .filter(f -> p.matcher(f.getName()).matches())
             .collect(Collectors.toList());
     }

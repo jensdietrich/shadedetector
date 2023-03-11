@@ -12,11 +12,7 @@ import java.util.stream.Collectors;
  * The order matters as this defines the order in which classes will be used in queries, and in some cases a subset might be used.
  * @author jens dietrich
  */
-public interface ClassSelector {
-
-    // a name used as an identifier of the selector
-    // must be unique per class
-    String name();
+public interface ClassSelector extends NamedService {
 
     List<String> selectForSearch(List<File> sourceCodeList);
 

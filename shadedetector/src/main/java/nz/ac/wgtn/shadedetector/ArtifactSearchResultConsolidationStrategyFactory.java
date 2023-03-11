@@ -1,5 +1,7 @@
 package nz.ac.wgtn.shadedetector;
 
+import nz.ac.wgtn.shadedetector.resultsetconsolidation.ArtifactOccursInAllResultSets;
+import nz.ac.wgtn.shadedetector.resultsetconsolidation.ArtifactOccursInMoreThanOneResultSets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,6 +14,11 @@ public class ArtifactSearchResultConsolidationStrategyFactory extends  AbstractS
     @Override
     protected Logger getLogger() {
         return LoggerFactory.getLogger(ArtifactSearchResultConsolidationStrategyFactory.class);
+    }
+
+    @Override
+    public ArtifactSearchResultConsolidationStrategy getDefault() {
+        return new ArtifactOccursInMoreThanOneResultSets();
     }
 
     @Override

@@ -19,6 +19,8 @@ public abstract class AbstractServiceLoaderFactory<T extends NamedService> {
 
     public abstract T create(String configuration);
 
+    public abstract T getDefault();
+
     protected T create(Class<T> serviceType, String serviceDescription, String configuration) {
         String[] parts = configuration.split("\\?");
         String name = parts[0];

@@ -1,5 +1,6 @@
 package nz.ac.wgtn.shadedetector;
 
+import nz.ac.wgtn.shadedetector.clonedetection.DummyCloneDetector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,6 +13,11 @@ public class CloneDetectorFactory extends  AbstractServiceLoaderFactory<CloneDet
     @Override
     protected Logger getLogger() {
         return LoggerFactory.getLogger(CloneDetectorFactory.class);
+    }
+
+    @Override
+    public CloneDetector getDefault() {
+        return new DummyCloneDetector();
     }
 
     @Override

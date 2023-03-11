@@ -1,5 +1,6 @@
 package nz.ac.wgtn.shadedetector;
 
+import nz.ac.wgtn.shadedetector.classselectors.SelectClassesWithComplexNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,6 +13,11 @@ public class ClassSelectorFactory extends  AbstractServiceLoaderFactory<ClassSel
     @Override
     protected Logger getLogger() {
         return LoggerFactory.getLogger(ClassSelectorFactory.class);
+    }
+
+    @Override
+    public ClassSelector getDefault() {
+        return new SelectClassesWithComplexNames();
     }
 
     @Override

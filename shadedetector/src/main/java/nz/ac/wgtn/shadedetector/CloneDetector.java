@@ -7,13 +7,7 @@ import java.io.File;
  * TODO: at the moment the intention is to use this to compare .java files, but this could be extended to .kotlin files etc
  * @author jens dietrich
  */
-public interface CloneDetector {
-
-    /**
-     * Returns a name that can be used to identify the tool. This is suitable to be used as argument in a CLI.
-     * @return
-     */
-    String getName() ;
+public interface CloneDetector extends NamedService {
 
     /**
      * Compare two source code files (.java). Return a similarity score between 0 (not similar) to 1 (very similar / identical).

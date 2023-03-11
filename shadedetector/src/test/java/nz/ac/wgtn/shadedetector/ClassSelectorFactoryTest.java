@@ -45,5 +45,4 @@ public class ClassSelectorFactoryTest {
         assertThrows(IllegalArgumentException.class, () -> new ClassSelectorFactory().create("foo"));
     }
 
-
 }

@@ -11,48 +11,9 @@ import java.util.stream.Collectors;
  * Example: merge sets, use intersection, select all that occur in at least two result sets, etc.
  * @author jens dietrich
  */
-public interface ArtifactSearchResultConsolidationStrategy {
+public interface ArtifactSearchResultConsolidationStrategy  extends NamedService {
+
     List<Artifact> consolidate (Map<String,ArtifactSearchResponse> searchResults);
-
-    ArtifactSearchResultConsolidationStrategy Merge = new ArtifactSearchResultConsolidationStrategy() {
-        @Override
-        public List<Artifact> consolidate(Map<String, ArtifactSearchResponse> searchResults) {
-            if (searchResults==null || searchResults.isEmpty()) {
-                return Collections.EMPTY_LIST;
-            }
-            return searchResults.values().stream()
-                .flatMap(result -> result.getBody().getArtifacts().stream())
-                .collect(Collectors.toList());
-        }
-    };
-
-    ArtifactSearchResultConsolidationStrategy Intersect = new ArtifactSearchResultConsolidationStrategy() {
-        @Override
-        public List<Artifact> consolidate(Map<String, ArtifactSearchResponse> searchResults) {
-            if (searchResults==null || searchResults.isEmpty()) {
-                return Collections.EMPTY_LIST;
-            }
-            Map<Artifact,Integer> counter = countArtifactOccurrences(searchResults);
-            return counter.keySet().stream()
-                .filter(artifact -> counter.get(artifact)==searchResults.size())
-                .collect(Collectors.toList());
-
-        }
-    };
-
-    ArtifactSearchResultConsolidationStrategy MultipleOccurrences = new ArtifactSearchResultConsolidationStrategy() {
-        @Override
-        public List<Artifact> consolidate(Map<String, ArtifactSearchResponse> searchResults) {
-            if (searchResults==null || searchResults.isEmpty()) {
-                return Collections.EMPTY_LIST;
-            }
-            Map<Artifact,Integer> counter = countArtifactOccurrences(searchResults);
-            return counter.keySet().stream()
-                .filter(artifact -> counter.get(artifact)>1)
-                .collect(Collectors.toList());
-
-        }
-    };
 
     default Map<Artifact,Integer> countArtifactOccurrences (Map<String, ArtifactSearchResponse> searchResults) {
         Map<Artifact,Integer> counter = new HashMap<>();

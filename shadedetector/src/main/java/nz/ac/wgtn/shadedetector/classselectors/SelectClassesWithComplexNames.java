@@ -10,7 +10,22 @@ import java.util.stream.Collectors;
  * Pick classes a high number of camel case tokens (prefer DoSomeThingSpecial over DoSomething).
  * @author jens dietrich
  */
-public class SelectClassesWithUniqueNames implements ClassSelector {
+public class SelectClassesWithComplexNames implements ClassSelector {
+
+    private int maxSize = 100;
+
+    public int getMaxSize() {
+        return maxSize;
+    }
+
+    public void setMaxSize(int maxSize) {
+        this.maxSize = maxSize;
+    }
+
+    @Override
+    public String name() {
+        return "complexnames";
+    }
 
     @Override
     public List<String> selectForSearch(List<File> sourceCodeList) {
@@ -23,6 +38,7 @@ public class SelectClassesWithUniqueNames implements ClassSelector {
         );
         return names.stream()
             .sorted(Comparator.comparingInt(ranks::get).reversed())
+            .limit(maxSize)
             .collect(Collectors.toList());
     }
 

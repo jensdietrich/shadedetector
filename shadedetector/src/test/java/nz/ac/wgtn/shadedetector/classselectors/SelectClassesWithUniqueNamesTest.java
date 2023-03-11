@@ -22,7 +22,7 @@ public class SelectClassesWithUniqueNamesTest {
         System.out.println("reading test data from file " + folder.getAbsolutePath());
 
         List<File> sources = Utils.listSourcecodeFilesInFolder(folder);
-        List<String> sortedSources = new SelectClassesWithUniqueNames().selectForSearch(sources);
+        List<String> sortedSources = new SelectClassesWithComplexNames().selectForSearch(sources);
         List<String> allSources = new SelectAll().selectForSearch(sources);
 
         // to test content
@@ -35,8 +35,8 @@ public class SelectClassesWithUniqueNamesTest {
             String className1 = sortedSources.get(i-1);
             String className2 = sortedSources.get(i);
             assertTrue(
-        SelectClassesWithUniqueNames.tokenizeCamelCase(className1).length >=
-                SelectClassesWithUniqueNames.tokenizeCamelCase(className2).length);
+        SelectClassesWithComplexNames.tokenizeCamelCase(className1).length >=
+                SelectClassesWithComplexNames.tokenizeCamelCase(className2).length);
         }
     }
 }

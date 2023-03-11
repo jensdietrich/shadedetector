@@ -5,7 +5,6 @@ import nz.ac.wgtn.shadedetector.ClassSelector;
 import java.io.File;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Explicitly specify classes (names) to look for.
@@ -17,10 +16,18 @@ import java.util.stream.Collectors;
  * @author jens dietrich
  */
 public class SelectClassesFromList implements ClassSelector  {
+
     private List<String> classList = null;
 
     public SelectClassesFromList(List<String> classList) {
         this.classList = classList;
+    }
+
+    public SelectClassesFromList() {}
+
+    @Override
+    public String name() {
+        return "list";
     }
 
     @Override

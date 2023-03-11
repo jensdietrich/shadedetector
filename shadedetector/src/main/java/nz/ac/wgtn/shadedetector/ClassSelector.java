@@ -13,8 +13,12 @@ import java.util.stream.Collectors;
  * @author jens dietrich
  */
 public interface ClassSelector {
-    List<String> selectForSearch(List<File> sourceCodeList);
 
+    // a name used as an identifier of the selector
+    // must be unique per class
+    String name();
+
+    List<String> selectForSearch(List<File> sourceCodeList);
 
     default Set<String> getNamesAsSet (List<File> sourceCodeList) {
         return sourceCodeList.stream()

@@ -11,6 +11,12 @@ import java.util.List;
  * @author jens dietrich
  */
 public class SelectAll implements ClassSelector {
+
+    @Override
+    public String name() {
+        return "all";
+    }
+
     @Override
     public List<String> selectForSearch(List<File> sourceCodeList) {
         return getNamesAsList(sourceCodeList);

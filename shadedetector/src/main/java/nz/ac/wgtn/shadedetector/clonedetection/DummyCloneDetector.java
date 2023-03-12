@@ -2,6 +2,8 @@ package nz.ac.wgtn.shadedetector.clonedetection;
 
 import nz.ac.wgtn.shadedetector.CloneDetector;
 import java.io.File;
+import java.util.Collections;
+import java.util.Set;
 
 /**
  * Dummy implementation mainly for testing until "real" implementations become available.
@@ -10,8 +12,8 @@ import java.io.File;
 public class DummyCloneDetector implements CloneDetector {
 
     @Override
-    public double getSimilarityScore(File src1, File src2) {
-        return src1.getName().equals(src2.getName()) ? 1 : 0;
+    public Set<CloneRecord> detect(File original, File cloneCandidate) {
+        return Collections.EMPTY_SET;
     }
 
     @Override

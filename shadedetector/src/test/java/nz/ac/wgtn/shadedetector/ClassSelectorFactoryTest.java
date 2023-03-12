@@ -1,9 +1,10 @@
 package nz.ac.wgtn.shadedetector;
 
 import nz.ac.wgtn.shadedetector.classselectors.SelectAll;
+import nz.ac.wgtn.shadedetector.classselectors.SelectClassesFromList;
 import nz.ac.wgtn.shadedetector.classselectors.SelectClassesWithComplexNames;
-import nz.ac.wgtn.shadedetector.resultsetconsolidation.ArtifactOccursInAllResultSets;
 import org.junit.jupiter.api.Test;
+import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class ClassSelectorFactoryTest {
@@ -44,6 +45,34 @@ public class ClassSelectorFactoryTest {
         assertTrue(selector instanceof SelectClassesWithComplexNames);
         SelectClassesWithComplexNames selectorX = (SelectClassesWithComplexNames)selector;
         assertEquals(43,selectorX.getMaxSize());
+    }
+
+    @Test
+    public void testSelectClassesFromListDefinedAsString1() {
+        ClassSelector selector = new ClassSelectorFactory().create("list?list=Foo");
+        assertNotNull(selector);
+        assertTrue(selector instanceof SelectClassesFromList);
+        assertEquals("list",selector.name());
+        assertEquals(List.of("Foo"),((SelectClassesFromList)selector).getClassList());
+    }
+
+    @Test
+    public void testSelectClassesFromListDefinedAsString2() {
+        ClassSelector selector = new ClassSelectorFactory().create("list?list=Foo1,Foo2");
+        assertNotNull(selector);
+        assertTrue(selector instanceof SelectClassesFromList);
+        assertEquals("list",selector.name());
+        assertEquals(List.of("Foo1","Foo2"),((SelectClassesFromList)selector).getClassList());
+    }
+
+    @Test
+    public void testSelectClassesFromListDefinedAsFile() {
+        String file = ClassSelectorFactoryTest.class.getClassLoader().getResource("classlist.txt").getFile();
+        ClassSelector selector = new ClassSelectorFactory().create("list?file="+file);
+        assertNotNull(selector);
+        assertTrue(selector instanceof SelectClassesFromList);
+        assertEquals("list",selector.name());
+        assertEquals(List.of("Transformer","ChainedTransformer","ConstantTransformer","InvokerTransformer","LazyMap"),((SelectClassesFromList)selector).getClassList());
     }
 
     @Test

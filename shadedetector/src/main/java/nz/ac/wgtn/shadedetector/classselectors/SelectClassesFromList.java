@@ -2,9 +2,16 @@ package nz.ac.wgtn.shadedetector.classselectors;
 
 import com.google.common.base.Preconditions;
 import nz.ac.wgtn.shadedetector.ClassSelector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static nz.ac.wgtn.shadedetector.Utils.loadClassListFromFile;
 
 /**
  * Explicitly specify classes (names) to look for.
@@ -16,6 +23,8 @@ import java.util.Set;
  * @author jens dietrich
  */
 public class SelectClassesFromList implements ClassSelector  {
+
+    private static Logger LOGGER = LoggerFactory.getLogger(SelectClassesFromList.class);
 
     private List<String> classList = null;
 
@@ -36,6 +45,34 @@ public class SelectClassesFromList implements ClassSelector  {
         for (String name:classList) {
             Preconditions.checkState(classNames.contains(name),"No class found in sourceCodeList named \"" + name + "\"");
         }
+        return classList;
+    }
+
+
+    /**
+     * Set a file name containing a list, to be used in bean instantiation.
+     * @param fileName
+     */
+    public void setFile(String fileName) {
+        File file = new File(fileName);
+        Preconditions.checkArgument(file.exists());
+        try {
+            this.classList = loadClassListFromFile(file);
+        } catch (IOException e) {
+            LOGGER.error("Error loading classlist from " + fileName,e);
+            throw new IllegalArgumentException(e);
+        }
+    }
+
+    /**
+     * Set a class names using a list encoded as a comma-separated string.
+     * @param list
+     */
+    public void setList(String list) {
+        this.classList = Stream.of(list.split(",")).collect(Collectors.toList());
+    }
+
+    public List<String> getClassList() {
         return classList;
     }
 }

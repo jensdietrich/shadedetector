@@ -86,7 +86,7 @@ public class Utils {
     }
 
     public static List<Path> listJavaSources(Path zipOrFolder) throws IOException {
-        return listContent(zipOrFolder,path -> path.getFileName().toString().endsWith(".java"));
+        return listContent(zipOrFolder,path -> path.toString().endsWith(".java"));
     }
 
     public static List<Path> listContent(Path zipOrFolder, Predicate<Path> filter) throws IOException {

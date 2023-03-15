@@ -95,6 +95,7 @@ public class Artifact {
         this.tags = tags;
     }
 
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

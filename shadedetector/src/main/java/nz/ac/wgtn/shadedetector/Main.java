@@ -1,17 +1,15 @@
 package nz.ac.wgtn.shadedetector;
 
+import nz.ac.wgtn.shadedetector.resultreporting.CSVResultReporter;
 import org.apache.commons.cli.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-import static nz.ac.wgtn.shadedetector.Utils.listJavaSources;
 
 /**
  * CLI main class.
@@ -19,7 +17,7 @@ import static nz.ac.wgtn.shadedetector.Utils.listJavaSources;
  */
 public class Main {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(ArtifactSearchResultConsolidationStrategyFactory.class);
+    private static Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
     private static ClassSelectorFactory CLASS_SELECTOR_FACTORY = new ClassSelectorFactory();
     private static CloneDetectorFactory CLONE_DETECTOR_FACTORY = new CloneDetectorFactory();
@@ -31,7 +29,6 @@ public class Main {
         options.addRequiredOption("a", "artifact",true, "the Maven artifact id of the artifact queried for clones");
         // @TODO - in the future, we could generalise this to look for version ranges , allow wildcards etc
         options.addRequiredOption("v", "version",true, "the Maven version of the artifact queried for clones");
-        options.addRequiredOption("o","output",true,"the name of the file where results will be stored");
 
         // we need a little language here to pass parameters, such as list:class1,class2
         // needs default
@@ -58,7 +55,7 @@ public class Main {
         boolean helpRequested = cmd.hasOption("help");
         GAV gav = new GAV(groupId,artifactId,version);
 
-        if (cmd.hasOption("help")) {
+        if (helpRequested) {
             printHelp(options);
         }
 
@@ -118,9 +115,12 @@ public class Main {
             LOGGER.info("analysing whether artifact {} matches",match.toString());
             try {
                 Path src = FetchResources.fetchSources(artifact);
-                Set<CloneDetector.CloneRecord> cloneAnalysesResult = cloneDetector.detect(sources,src);
+                Set<CloneDetector.CloneRecord> cloneAnalysesResults = cloneDetector.detect(sources,src);
 
-                // @TODO analyse further and report
+                // @TODO plugin arbitrary reporters
+                ResultReporter reporter = new CSVResultReporter("out");
+                LOGGER.info("Reporting results for " + match);
+                reporter.report(artifact,match,cloneAnalysesResults);
 
             } catch (IOException e) {
                 LOGGER.error("cannot fetch sources for artifact {}",match.toString(),e);
@@ -128,9 +128,6 @@ public class Main {
             }
         }
 
-
-
-        // report
 
     }
 

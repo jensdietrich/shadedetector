@@ -6,11 +6,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static nz.ac.wgtn.shadedetector.Utils.getUnqualifiedJavaClassNames;
 import static nz.ac.wgtn.shadedetector.Utils.loadClassListFromFile;
 
 /**
@@ -40,8 +43,8 @@ public class SelectClassesFromList implements ClassSelector  {
     }
 
     @Override
-    public List<String> selectForSearch(List<File> sourceCodeList) {
-        Set<String> classNames = getNamesAsSet(sourceCodeList);
+    public List<String> selectForSearch(Path folderOrZipContainingSources) {
+        Set<String> classNames = new HashSet<>(getUnqualifiedJavaClassNames(folderOrZipContainingSources));
         for (String name:classList) {
             Preconditions.checkState(classNames.contains(name),"No class found in sourceCodeList named \"" + name + "\"");
         }

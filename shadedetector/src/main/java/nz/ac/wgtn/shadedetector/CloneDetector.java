@@ -1,6 +1,6 @@
 package nz.ac.wgtn.shadedetector;
 
-import java.io.File;
+import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Set;
 
@@ -11,14 +11,16 @@ import java.util.Set;
  */
 public interface CloneDetector extends NamedService {
 
-    static class CloneRecord {
+    // represents the results of a clone analysis
+    // the paths may point to locations within a jar (using the zip file system)
+    class CloneRecord {
         // a value between 0 and 1 (0 - no similarity, 1 -- highest similarity / equality)
         private double convidence = 0;
         // class references are fully qualified class names / paths.
-        private String original = null;
-        private String clone = null;
+        private Path original = null;
+        private Path clone = null;
 
-        public CloneRecord(double convidence, String original, String clone) {
+        public CloneRecord(double convidence, Path original, Path clone) {
             this.convidence = convidence;
             this.original = original;
             this.clone = clone;
@@ -32,19 +34,19 @@ public interface CloneDetector extends NamedService {
             this.convidence = convidence;
         }
 
-        public String getOriginal() {
+        public Path getOriginal() {
             return original;
         }
 
-        public void setOriginal(String original) {
+        public void setOriginal(Path original) {
             this.original = original;
         }
 
-        public String getClone() {
+        public Path getClone() {
             return clone;
         }
 
-        public void setClone(String clone) {
+        public void setClone(Path clone) {
             this.clone = clone;
         }
 
@@ -70,5 +72,6 @@ public interface CloneDetector extends NamedService {
      * @param cloneCandidate a jar, zip or folder containing sources of the library that may contain clones
      * @return
      */
-    Set<CloneRecord> detect(File original, File cloneCandidate) ;
+    Set<CloneRecord> detect(Path original, Path cloneCandidate) ;
+
 }

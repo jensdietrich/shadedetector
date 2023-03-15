@@ -1,13 +1,20 @@
 package nz.ac.wgtn.shadedetector;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Streams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.net.URL;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.nio.file.FileSystem;
 
 /**
  * Miscellaneous utilities.
@@ -63,5 +70,50 @@ public class Utils {
             fileSignature = raf.readInt();
         } catch (IOException e) {}
         return fileSignature == 0x504B0304 || fileSignature == 0x504B0506 || fileSignature == 0x504B0708;
+    }
+
+
+    public static List<String> getUnqualifiedJavaClassNames(Path zipOrFolder) {
+        try {
+            return listJavaSources(zipOrFolder).stream()
+                    .map(f -> f.getFileName().toString())
+                    .map(n -> n.replace(".java",""))
+                    .collect(Collectors.toList());
+        } catch (IOException e) {
+            LOGGER.error("Error collecting Java class names from source code",e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static List<Path> listJavaSources(Path zipOrFolder) throws IOException {
+        return listContent(zipOrFolder,path -> path.getFileName().toString().endsWith(".java"));
+    }
+
+    public static List<Path> listContent(Path zipOrFolder, Predicate<Path> filter) throws IOException {
+        if (zipOrFolder.toFile().isDirectory()) {
+            return Files.list(zipOrFolder)
+                .filter(file -> !Files.isDirectory(file))
+                .filter(filter)
+                .collect(Collectors.toList());
+        }
+        else {
+
+            Map<String, String> env = new HashMap<>();
+            FileSystem fs = FileSystems.newFileSystem(zipOrFolder, env, null);
+            return Streams.stream(fs.getRootDirectories())
+                .flatMap(root -> {
+                    try {
+                        return Files.walk(root);
+                    }
+                    catch (IOException x) {
+                        LOGGER.error("Error extracting content of file system",x);
+                        throw new RuntimeException(x);
+                    }
+                })
+                .filter(filter)
+                .collect(Collectors.toList());
+
+        }
+
     }
 }

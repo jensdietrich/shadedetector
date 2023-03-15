@@ -2,11 +2,11 @@ package nz.ac.wgtn.shadedetector;
 
 import com.google.common.io.CharStreams;
 import com.google.gson.Gson;
-import nz.ac.wgtn.shadedetector.classselectors.SelectClassesFromList;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.*;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -59,7 +59,7 @@ public class ArtifactSearch {
 
     }
 
-    static Map<String,ArtifactSearchResponse> findShadingArtifacts (List<File> projectSources, ClassSelector classSelector, int maxClassesUsedForSearch, int batchCount,int maxResultsInEachBatch) {
+    static Map<String,ArtifactSearchResponse> findShadingArtifacts (Path projectSources, ClassSelector classSelector, int maxClassesUsedForSearch, int batchCount, int maxResultsInEachBatch) {
         List<String> classNamesSelectedForSearch = classSelector.selectForSearch(projectSources);
         List<String> cappedClassNamesSelectedForSearch = classNamesSelectedForSearch.stream().limit(maxClassesUsedForSearch).collect(Collectors.toList());
         Map<String,ArtifactSearchResponse> responses = new HashMap<>();

@@ -3,6 +3,15 @@ package nz.ac.wgtn.shadedetector;
 import org.apache.commons.cli.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import static nz.ac.wgtn.shadedetector.Utils.listJavaSources;
 
 /**
  * CLI main class.
@@ -32,7 +41,6 @@ public class Main {
         options.addOption("c","clonedetector",true,"the clone detector to be used (optional, default is \"" + CLONE_DETECTOR_FACTORY.getDefault().name() + "\"");
         options.addOption("r","resultconsolidation",true,"the query result consolidation strategy to be used (optional, default is \"" + CONSOLIDATION_STRATEGY_FACTORY.getDefault().name() + "\"");
 
-
         CommandLineParser parser = new DefaultParser();
 
         CommandLine cmd = null;
@@ -44,10 +52,11 @@ public class Main {
             printHelp(options);
         }
 
-        String group = cmd.getOptionValue("group");
-        String artifact = cmd.getOptionValue("artifact");
+        String groupId = cmd.getOptionValue("group");
+        String artifactId = cmd.getOptionValue("artifact");
         String version = cmd.getOptionValue("version");
         boolean helpRequested = cmd.hasOption("help");
+        GAV gav = new GAV(groupId,artifactId,version);
 
         if (cmd.hasOption("help")) {
             printHelp(options);
@@ -57,7 +66,72 @@ public class Main {
         ClassSelector classSelector = instantiateOptional(CLASS_SELECTOR_FACTORY,cmd,"class selector","classselector");
         ArtifactSearchResultConsolidationStrategy resultConsolidationStrategy = instantiateOptional(CONSOLIDATION_STRATEGY_FACTORY,cmd,"result consolidation strategy","resultconsolidation");
 
-        // @TODO implement rest !!
+        // find artifact
+        List<Artifact> allVersions = null;
+        Artifact artifact = null;
+        try {
+            // note: fetching artifacts for all versions could be postponed
+            ArtifactSearchResponse response = ArtifactSearch.findVersions(groupId,artifactId,1,ArtifactSearch.ROWS_PER_BATCH);
+            allVersions = response.getBody().getArtifacts();
+            artifact = allVersions.stream()
+                .filter(a -> a.getVersion().equals(version))
+                .findFirst().orElse(null);
+
+        } catch (ArtifactSearchException e) {
+            LOGGER.error("cannot fetch artifacts for "+groupId+":"+artifactId,e);
+        }
+        if (allVersions==null || allVersions.size()==0 || artifact==null) {
+            LOGGER.error("cannot locate artifacts for {}:{}",groupId,artifactId);
+            System.exit(1);
+        }
+
+        // find sources
+        Path sources = null;
+        try {
+            sources = FetchResources.fetchSources(artifact);
+        } catch (IOException e) {
+            LOGGER.error("cannot fetch sources for " + gav.asString(),e);
+        }
+        if (sources==null) {
+            LOGGER.error("cannot fecth sources for {}",artifact.toString());
+            System.exit(1);
+        }
+
+        // find all potentially matching artifacts
+        Map<String,ArtifactSearchResponse> matches = null;
+        try {
+            matches = ArtifactSearch.findShadingArtifacts(sources,classSelector,10, ArtifactSearch.BATCHES,ArtifactSearch.ROWS_PER_BATCH);
+        }
+        catch (Exception e) {
+            LOGGER.error("cannot fetch artifacts with matching classes from {}",gav,e);
+        }
+
+        // consolidate results
+        List<Artifact> consolidatedMatches = resultConsolidationStrategy.consolidate(matches);
+
+        // run clone detection
+
+        AtomicInteger countMatchesAnalysed = new AtomicInteger();
+        AtomicInteger countMatchesAnalysedFailed = new AtomicInteger();
+        for (Artifact match:consolidatedMatches) {
+            countMatchesAnalysed.incrementAndGet();
+            LOGGER.info("analysing whether artifact {} matches",match.toString());
+            try {
+                Path src = FetchResources.fetchSources(artifact);
+                Set<CloneDetector.CloneRecord> cloneAnalysesResult = cloneDetector.detect(sources,src);
+
+                // @TODO analyse further and report
+
+            } catch (IOException e) {
+                LOGGER.error("cannot fetch sources for artifact {}",match.toString(),e);
+                countMatchesAnalysedFailed.incrementAndGet();
+            }
+        }
+
+
+
+        // report
+
     }
 
     private static <T extends NamedService> T instantiateOptional(AbstractServiceLoaderFactory<T> factory, CommandLine cmd, String description, String key) {

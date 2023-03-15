@@ -1,9 +1,11 @@
 package nz.ac.wgtn.shadedetector.classselectors;
 
 import nz.ac.wgtn.shadedetector.ClassSelector;
-import java.io.File;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static nz.ac.wgtn.shadedetector.Utils.getUnqualifiedJavaClassNames;
 
 /**
  * Select all classes (sources) from a given list.
@@ -28,15 +30,15 @@ public class SelectClassesWithComplexNames implements ClassSelector {
     }
 
     @Override
-    public List<String> selectForSearch(List<File> sourceCodeList) {
+    public List<String> selectForSearch(Path folderOrZipContainingSources) {
+        List<String> classNames = getUnqualifiedJavaClassNames(folderOrZipContainingSources);
         final Map<String,Integer> ranks = new HashMap<>();
-        List<String> names = getNamesAsList(sourceCodeList);
-        names.stream().forEach(
+        classNames.stream().forEach(
             name -> {
                 ranks.put(name,tokenizeCamelCase(name).length);
             }
         );
-        return names.stream()
+        return classNames.stream()
             .sorted(Comparator.comparingInt(ranks::get).reversed())
             .limit(maxSize)
             .collect(Collectors.toList());

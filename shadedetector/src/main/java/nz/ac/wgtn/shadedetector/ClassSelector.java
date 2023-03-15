@@ -1,6 +1,6 @@
 package nz.ac.wgtn.shadedetector;
 
-import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -14,20 +14,21 @@ import java.util.stream.Collectors;
  */
 public interface ClassSelector extends NamedService {
 
-    List<String> selectForSearch(List<File> sourceCodeList);
+    List<String> selectForSearch(Path folderOrZipContainingSources);
 
-    default Set<String> getNamesAsSet (List<File> sourceCodeList) {
+    default Set<String> getNamesAsSet (List<Path> sourceCodeList) {
+
         return sourceCodeList.stream()
-            .filter(f -> f.getName().endsWith(".java"))
-            .map(f -> f.getName())
+            .map(f -> f.getFileName().toString())
+            .filter(n -> n.endsWith(".java"))
             .map(n -> n.replace(".java", ""))
             .collect(Collectors.toSet());
     }
 
-    default List<String> getNamesAsList (List<File> sourceCodeList) {
+    default List<String> getNamesAsList (List<Path> sourceCodeList) {
         return sourceCodeList.stream()
-            .filter(f -> f.getName().endsWith(".java"))
-            .map(f -> f.getName())
+            .map(f -> f.getFileName().toString())
+            .filter(n -> n.endsWith(".java"))
             .map(n -> n.replace(".java", ""))
             .collect(Collectors.toList());
     }

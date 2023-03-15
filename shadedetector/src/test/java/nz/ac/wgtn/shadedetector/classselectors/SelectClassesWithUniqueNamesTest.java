@@ -18,12 +18,12 @@ public class SelectClassesWithUniqueNamesTest {
     public void test () throws IOException {
         URL url = ArtifactSearchTest.class.getClassLoader().getResource("commons-collections4-4.0");
         System.out.println("reading test data from url " + url);
-        File folder = new File(url.getFile());
-        System.out.println("reading test data from file " + folder.getAbsolutePath());
+        File sourceFolder = new File(url.getFile());
+        System.out.println("reading test data from file " + sourceFolder.getAbsolutePath());
 
-        List<File> sources = Utils.listSourcecodeFilesInFolder(folder);
-        List<String> sortedSources = new SelectClassesWithComplexNames().selectForSearch(sources);
-        List<String> allSources = new SelectAll().selectForSearch(sources);
+
+        List<String> sortedSources = new SelectClassesWithComplexNames().selectForSearch(sourceFolder.toPath());
+        List<String> allSources = new SelectAll().selectForSearch(sourceFolder.toPath());
 
         // to test content
         Set<String> sourcesAsSet = new HashSet(allSources);

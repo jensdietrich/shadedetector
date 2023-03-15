@@ -1,11 +1,12 @@
 package nz.ac.wgtn.shadedetector;
 
 import com.google.common.io.ByteStreams;
-import com.google.common.io.CharStreams;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -32,11 +33,11 @@ public class FetchResources {
             LOGGER.info("Looking for sources for artifact " + artifact.getId());
             allCounter.incrementAndGet();
             try {
-                File source = fetchSources(artifact);
-                LOGGER.info("\tsource code fetched: " + source.getAbsolutePath());
+                Path source = fetchSources(artifact);
+                LOGGER.info("\tsource code fetched: " + source.toFile().getAbsolutePath());
                 fetchSuccessCounter.incrementAndGet();
-                if (!Utils.isZip(source)) {
-                    LOGGER.warn("\tnot a zip file: " + source.getAbsolutePath());
+                if (!Utils.isZip(source.toFile())) {
+                    LOGGER.warn("\tnot a zip file: " + source.toFile().getAbsolutePath());
                     fetchSuccessButNotAZipCounter.incrementAndGet();
                 }
             }
@@ -50,16 +51,16 @@ public class FetchResources {
         LOGGER.info("fetch succeeded but not a zip: " + fetchSuccessButNotAZipCounter.get());
     }
 
-    private static File fetchBinaries (Artifact artifact) throws IOException {
+    public static Path fetchBinaries (Artifact artifact) throws IOException {
         GAV gav = new GAV(artifact.getGroupId(),artifact.getArtifactId(),artifact.getVersion());
         if (!artifact.getResources().contains(".jar")) {
             throw new IllegalStateException("no source code found for artifact " + artifact.getId());
         }
-        File cached = getCachedBin(gav,"jar");
+        Path cached = getCachedBin(gav,"jar");
         return fetch(gav,cached,".jar");
     }
 
-    private static File fetchSources (Artifact artifact) throws IOException {
+    public static Path fetchSources (Artifact artifact) throws IOException {
         GAV gav = new GAV(artifact.getGroupId(),artifact.getArtifactId(),artifact.getVersion());
         String sourceSuffix = artifact.getResources().stream()
             .filter(r -> r.contains("sources") || r.contains("src"))
@@ -69,14 +70,14 @@ public class FetchResources {
             throw new IllegalStateException("no source code found for artifact " + artifact.getId());
         }
 
-        File cached = getCachedSrc(gav,sourceSuffix);
+        Path cached = getCachedSrc(gav,sourceSuffix);
         return fetch(gav,cached,sourceSuffix);
     }
 
-    private static File fetch(GAV gav,File cached,String suffix) throws IOException {
+    private static Path fetch(GAV gav,Path cached,String suffix) throws IOException {
 
-        if (cached.exists()) {
-            LOGGER.info("using cached data from " + cached.getAbsolutePath());
+        if (cached.toFile().exists()) {
+            LOGGER.info("using cached data from " + cached.toFile().getAbsolutePath());
         }
         else {
 
@@ -104,8 +105,8 @@ public class FetchResources {
             LOGGER.info("\tresponse code is: " + responseCode);
 
             if (responseCode==200) {
-                try (InputStream in = response.body().byteStream(); OutputStream out = new FileOutputStream(cached)) {
-                    LOGGER.info("\tcaching data in " + cached.getAbsolutePath());
+                try (InputStream in = response.body().byteStream(); OutputStream out = Files.newOutputStream(cached)) {
+                    LOGGER.info("\tcaching data in " + cached.toFile().getAbsolutePath());
                     ByteStreams.copy(in,out);
                 }
             }
@@ -114,20 +115,20 @@ public class FetchResources {
             }
         }
 
-        assert cached.exists();
+        assert cached.toFile().exists();
         return cached;
     }
 
-    private static File getCachedBin(GAV gav,String suffix) {
+    private static Path getCachedBin(GAV gav,String suffix) {
         return getCached(BIN_CACHE,gav,gav.getArtifactId()+"-"+gav.getVersion()+suffix);
     }
 
-    private static File getCachedSrc(GAV gav,String suffix) {
+    private static Path getCachedSrc(GAV gav,String suffix) {
         return getCached(SRC_CACHE,gav,gav.getArtifactId()+"-"+gav.getVersion()+suffix);
     }
 
     // @TODO can we use name given by project -- need to check whether query results return it
-    private static File getCached(File cacheRoot, GAV gav, String fileName) {
+    private static Path getCached(File cacheRoot, GAV gav, String fileName) {
         File groupFolder = new File(cacheRoot,gav.getGroupId());
         File artifactFolder = new File(groupFolder,gav.getArtifactId());
         File versionFolder = new File(artifactFolder,gav.getVersion());
@@ -135,6 +136,6 @@ public class FetchResources {
             versionFolder.mkdirs();
         }
 
-        return new File(versionFolder,fileName);
+        return new File(versionFolder,fileName).toPath();
     }
 }

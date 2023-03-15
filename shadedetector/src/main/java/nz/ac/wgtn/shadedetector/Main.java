@@ -22,6 +22,7 @@ public class Main {
     private static ClassSelectorFactory CLASS_SELECTOR_FACTORY = new ClassSelectorFactory();
     private static CloneDetectorFactory CLONE_DETECTOR_FACTORY = new CloneDetectorFactory();
     private static ArtifactSearchResultConsolidationStrategyFactory CONSOLIDATION_STRATEGY_FACTORY = new ArtifactSearchResultConsolidationStrategyFactory();
+    private static ResultReporterFactory RESULT_REPORTER_FACTORY = new ResultReporterFactory();
 
     public static void main (String[] args) throws ParseException {
         Options options = new Options();
@@ -33,6 +34,7 @@ public class Main {
         // we need a little language here to pass parameters, such as list:class1,class2
         // needs default
         options.addOption("s", "classselector",true, "the strategy used to select classes (optional, default is\"" + CLASS_SELECTOR_FACTORY.getDefault().name() + "\"");
+        options.addOption("o", "output",true, "the component used to process and report results");
 
         options.addOption("h", "help",false, "print instructions");
         options.addOption("c","clonedetector",true,"the clone detector to be used (optional, default is \"" + CLONE_DETECTOR_FACTORY.getDefault().name() + "\"");
@@ -61,6 +63,7 @@ public class Main {
 
         CloneDetector cloneDetector = instantiateOptional(CLONE_DETECTOR_FACTORY,cmd,"clone detector","clonedetector");
         ClassSelector classSelector = instantiateOptional(CLASS_SELECTOR_FACTORY,cmd,"class selector","classselector");
+        ResultReporter resultReporter = instantiateOptional(RESULT_REPORTER_FACTORY,cmd,"result reporter","output");
         ArtifactSearchResultConsolidationStrategy resultConsolidationStrategy = instantiateOptional(CONSOLIDATION_STRATEGY_FACTORY,cmd,"result consolidation strategy","resultconsolidation");
 
         // find artifact
@@ -112,15 +115,14 @@ public class Main {
         AtomicInteger countMatchesAnalysedFailed = new AtomicInteger();
         for (Artifact match:consolidatedMatches) {
             countMatchesAnalysed.incrementAndGet();
-            LOGGER.info("analysing whether artifact {} matches",match.toString());
+            LOGGER.info("analysing whether artifact {} matches",match.getId());
             try {
                 Path src = FetchResources.fetchSources(artifact);
                 Set<CloneDetector.CloneRecord> cloneAnalysesResults = cloneDetector.detect(sources,src);
 
-                // @TODO plugin arbitrary reporters
-                ResultReporter reporter = new CSVResultReporter("out");
-                LOGGER.info("Reporting results for " + match);
-                reporter.report(artifact,match,cloneAnalysesResults);
+                // @TODO plugin arbitrary reportersresultReporter
+                LOGGER.info("Reporting results for " + match.getId());
+                resultReporter.report(artifact,match,cloneAnalysesResults);
 
             } catch (IOException e) {
                 LOGGER.error("cannot fetch sources for artifact {}",match.toString(),e);

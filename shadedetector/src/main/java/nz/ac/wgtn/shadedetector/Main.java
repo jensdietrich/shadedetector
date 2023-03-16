@@ -137,14 +137,14 @@ public class Main {
             countMatchesAnalysed.incrementAndGet();
             LOGGER.info("analysing whether artifact {} matches",match.getId());
             try {
-                Path src = FetchResources.fetchSources(artifact);
+                Path src = FetchResources.fetchSources(match);
                 Set<CloneDetector.CloneRecord> cloneAnalysesResults = cloneDetector.detect(sources,src);
 
                 // @TODO plugin arbitrary reportersresultReporter
                 LOGGER.info("Reporting results for " + match.getId());
                 resultReporter.report(artifact,match,cloneAnalysesResults);
 
-            } catch (IOException e) {
+            } catch (Exception e) {
                 LOGGER.error("cannot fetch sources for artifact {}",match.toString(),e);
                 countMatchesAnalysedFailed.incrementAndGet();
             }

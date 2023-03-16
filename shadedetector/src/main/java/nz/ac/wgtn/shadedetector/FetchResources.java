@@ -64,6 +64,7 @@ public class FetchResources {
         GAV gav = new GAV(artifact.getGroupId(),artifact.getArtifactId(),artifact.getVersion());
         String sourceSuffix = artifact.getResources().stream()
             .filter(r -> r.contains("sources") || r.contains("src"))
+            .filter(r -> r.endsWith(".jar") || r.endsWith(".zip"))
             //.orElse(null);
             .findFirst().orElse(null);
         if (sourceSuffix==null) {
@@ -75,48 +76,16 @@ public class FetchResources {
     }
 
     private static Path fetch(GAV gav,Path cached,String suffix) throws IOException {
-
-        if (cached.toFile().exists()) {
-            LOGGER.info("using cached data from " + cached.toFile().getAbsolutePath());
-        }
-        else {
-
-            // https://search.maven.org/remotecontent?filepath=com/jolira/guice/3.0.0/guice-3.0.0.pom
-            OkHttpClient client = new OkHttpClient();
-
-            HttpUrl.Builder urlBuilder = HttpUrl.parse(SEARCH_URL).newBuilder();
-
-            String remotePath = gav.getGroupId().replace(".","/");
-            remotePath = remotePath + '/' + gav.getArtifactId() + '/' + gav.getVersion() + '/' + gav.getArtifactId() + '-' + gav.getVersion();
-
-            // urlBuilder.addQueryParameter("filepath", remotePath);
-
-            // https://repo1.maven.org/maven2/com/iussoft/iussoft-api/3.0.1/iussoft-api-3.0.1-sources.jar
-            String url = urlBuilder.build().toString();
-            url = url + "?filepath=" + remotePath + suffix;
-            LOGGER.info("\tsearch url: " + url);
-            Request request = new Request.Builder().url(url).build();
-
-            Call call = client.newCall(request);
-            Response response = null;
-            response = call.execute();
-
-            int responseCode = response.code();
-            LOGGER.info("\tresponse code is: " + responseCode);
-
-            if (responseCode==200) {
-                try (InputStream in = response.body().byteStream(); OutputStream out = Files.newOutputStream(cached)) {
-                    LOGGER.info("\tcaching data in " + cached.toFile().getAbsolutePath());
-                    ByteStreams.copy(in,out);
-                }
-            }
-            else {
-                throw new IOException("failed to download resource from " + url + " , response code: " + responseCode + " - " + response.message() );
-            }
-        }
-
-        assert cached.toFile().exists();
-        return cached;
+        // https://search.maven.org/remotecontent?filepath=com/jolira/guice/3.0.0/guice-3.0.0.pom
+        OkHttpClient client = new OkHttpClient();
+        HttpUrl.Builder urlBuilder = HttpUrl.parse(SEARCH_URL).newBuilder();
+        String remotePath = gav.getGroupId().replace(".","/");
+        remotePath = remotePath + '/' + gav.getArtifactId() + '/' + gav.getVersion() + '/' + gav.getArtifactId() + '-' + gav.getVersion();
+        // urlBuilder.addQueryParameter("filepath", remotePath);
+        // https://repo1.maven.org/maven2/com/iussoft/iussoft-api/3.0.1/iussoft-api-3.0.1-sources.jar
+        String url = urlBuilder.build().toString();
+        url = url + "?filepath=" + remotePath + suffix;
+        return MvnRestAPIClient.fetchBinaryData(url,cached);
     }
 
     private static Path getCachedBin(GAV gav,String suffix) {

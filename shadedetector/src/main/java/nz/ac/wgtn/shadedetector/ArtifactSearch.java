@@ -114,31 +114,11 @@ public class ArtifactSearch {
                 urlBuilder.addQueryParameter("start",""+((maxResultsInEachBatch*i)+1));
 
                 String url = urlBuilder.build().toString();
-                LOGGER.info("\tsearch url: {}", url);
-                Request request = new Request.Builder().url(url).build();
-
-                Call call = client.newCall(request);
-                Response response = null;
+                File cachedElement = new File(CACHE_BY_CLASSNAME,className+'-'+(i+1)+".json");
                 try {
-                    response = call.execute();
+                    cached.add(MvnRestAPIClient.fetchCharData(url,cachedElement.toPath()).toFile());
                 } catch (IOException x) {
                     throw new ArtifactSearchException(x);
-                }
-
-                int responseCode = response.code();
-                LOGGER.info("\tresponse code is: {}", responseCode);
-
-                if (responseCode == 200) {
-                    File cache = new File(CACHE_BY_CLASSNAME,className+'-'+(i+1)+".json");
-                    try (Reader reader = response.body().charStream(); Writer writer = new FileWriter(cache)) {
-                        LOGGER.info("\tcaching data in {}",cache.getAbsolutePath());
-                        CharStreams.copy(reader, writer);
-                        cached.add(cache);
-                    } catch (IOException x) {
-                        throw new ArtifactSearchException("cannot read and cache response" + x);
-                    }
-                } else {
-                    throw new ArtifactSearchException("query returned unexpected status code " + responseCode + " - " + response.message());
                 }
             }
         }
@@ -211,7 +191,7 @@ public class ArtifactSearch {
 
     private static List<File> getCachedByGroupAndArtifactId(String groupId,String artifactId) {
         Pattern p = Pattern.compile(groupId+':'+artifactId+"-\\d+\\.json");
-        return Stream.of(CACHE_BY_CLASSNAME.listFiles())
+        return Stream.of(CACHE_ARTIFACT_VERSIONS.listFiles())
             .filter(f -> p.matcher(f.getName()).matches())
             .collect(Collectors.toList());
     }

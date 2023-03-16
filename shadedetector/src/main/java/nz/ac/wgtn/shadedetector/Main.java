@@ -1,11 +1,12 @@
 package nz.ac.wgtn.shadedetector;
 
-import nz.ac.wgtn.shadedetector.resultreporting.CSVResultReporter;
+import nz.ac.wgtn.shadedetector.resultreporting.CombinedResultReporter;
 import org.apache.commons.cli.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,6 +36,10 @@ public class Main {
         // needs default
         options.addOption("s", "classselector",true, "the strategy used to select classes (optional, default is\"" + CLASS_SELECTOR_FACTORY.getDefault().name() + "\"");
         options.addOption("o", "output",true, "the component used to process and report results");
+        options.addOption("o1", "output1",true, "an additional component used to process and report results");
+        options.addOption("o2", "output2",true, "an additional component used to process and report results");
+        options.addOption("o3", "output3",true, "an additional component used to process and report results");
+
 
         options.addOption("h", "help",false, "print instructions");
         options.addOption("c","clonedetector",true,"the clone detector to be used (optional, default is \"" + CLONE_DETECTOR_FACTORY.getDefault().name() + "\"");
@@ -63,8 +68,23 @@ public class Main {
 
         CloneDetector cloneDetector = instantiateOptional(CLONE_DETECTOR_FACTORY,cmd,"clone detector","clonedetector");
         ClassSelector classSelector = instantiateOptional(CLASS_SELECTOR_FACTORY,cmd,"class selector","classselector");
-        ResultReporter resultReporter = instantiateOptional(RESULT_REPORTER_FACTORY,cmd,"result reporter","output");
         ArtifactSearchResultConsolidationStrategy resultConsolidationStrategy = instantiateOptional(CONSOLIDATION_STRATEGY_FACTORY,cmd,"result consolidation strategy","resultconsolidation");
+        ResultReporter firstResultReporter = instantiateOptional(RESULT_REPORTER_FACTORY,cmd,"result reporter","output");
+
+        List<ResultReporter> resultReporters = new ArrayList<>();
+        resultReporters.add(firstResultReporter);
+        if (cmd.hasOption("output1")) {
+            resultReporters.add(instantiateOptional(RESULT_REPORTER_FACTORY,cmd,"result reporter","output1"));
+        }
+        if (cmd.hasOption("output2")) {
+            resultReporters.add(instantiateOptional(RESULT_REPORTER_FACTORY,cmd,"result reporter","output2"));
+        }
+        if (cmd.hasOption("output3")) {
+            resultReporters.add(instantiateOptional(RESULT_REPORTER_FACTORY,cmd,"result reporter","output3"));
+        }
+        ResultReporter resultReporter = resultReporters.size()==1 ?
+            resultReporters.get(0) :
+            new CombinedResultReporter(resultReporters);
 
         // find artifact
         List<Artifact> allVersions = null;

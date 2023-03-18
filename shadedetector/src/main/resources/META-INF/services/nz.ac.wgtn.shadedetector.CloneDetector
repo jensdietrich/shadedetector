@@ -1,1 +1,2 @@
 nz.ac.wgtn.shadedetector.clonedetection.DummyCloneDetector
+nz.ac.wgtn.shadedetector.clonedetection.ast.ASTBasedCloneDetector

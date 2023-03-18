@@ -64,7 +64,7 @@ public class FetchResources {
         GAV gav = new GAV(artifact.getGroupId(),artifact.getArtifactId(),artifact.getVersion());
         String sourceSuffix = artifact.getResources().stream()
             .filter(r -> r.contains("sources") || r.contains("src"))
-            .filter(r -> r.endsWith(".jar") || r.endsWith(".zip"))
+            .filter(r -> r.endsWith(".jar") || r.endsWith(".zip"))  // important, otherwise hashes will be fetched sometimes
             //.orElse(null);
             .findFirst().orElse(null);
         if (sourceSuffix==null) {

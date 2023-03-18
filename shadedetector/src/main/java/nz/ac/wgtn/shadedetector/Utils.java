@@ -75,23 +75,27 @@ public class Utils {
 
     public static List<String> getUnqualifiedJavaClassNames(Path zipOrFolder) {
         try {
-            return listJavaSources(zipOrFolder).stream()
-                    .map(f -> f.getFileName().toString())
-                    .map(n -> n.replace(".java",""))
-                    .collect(Collectors.toList());
+            return listJavaSources(zipOrFolder,true).stream()
+                .map(f -> f.getFileName().toString())
+                .map(n -> n.replace(".java",""))
+                .collect(Collectors.toList());
         } catch (IOException e) {
             LOGGER.error("Error collecting Java class names from source code",e);
             throw new RuntimeException(e);
         }
     }
 
-    public static List<Path> listJavaSources(Path zipOrFolder) throws IOException {
-        return listContent(zipOrFolder,path -> path.toString().endsWith(".java"));
+    public static List<Path> listJavaSources(Path zipOrFolder,boolean excludePackageInfo) throws IOException {
+        Predicate<Path> filter = path -> path.toString().endsWith(".java");
+        if (excludePackageInfo) {
+            filter = filter.and(p -> !p.toString().endsWith("package-info.java"));
+        }
+        return listContent(zipOrFolder,filter);
     }
 
     public static List<Path> listContent(Path zipOrFolder, Predicate<Path> filter) throws IOException {
         if (zipOrFolder.toFile().isDirectory()) {
-            return Files.list(zipOrFolder)
+            return Files.walk(zipOrFolder)
                 .filter(file -> !Files.isDirectory(file))
                 .filter(filter)
                 .collect(Collectors.toList());

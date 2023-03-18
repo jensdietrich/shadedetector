@@ -7,6 +7,7 @@ import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.PackageDeclaration;
 import com.github.javaparser.ast.comments.Comment;
 import com.github.javaparser.ast.expr.*;
+import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.utils.Pair;
 import nz.ac.wgtn.shadedetector.CloneDetector;
@@ -38,7 +39,7 @@ public class ASTBasedCloneDetector implements CloneDetector  {
     public Set<CloneRecord> detect(Path original, Path cloneCandidate) {
         try {
             List<Path> originalJavaSources = Utils.listJavaSources(original,true);
-            List<Path> cloneCandidateJavaSources = Utils.listJavaSources(original,true);
+            List<Path> cloneCandidateJavaSources = Utils.listJavaSources(cloneCandidate,true);
 
             List<Pair<Path,Path>> potentialMatches = new ArrayList<>();
             for (Path originalSource:originalJavaSources) {
@@ -83,11 +84,12 @@ public class ASTBasedCloneDetector implements CloneDetector  {
     static boolean analyseClone(Node node1, Node node2) {
         List<Node> relevantChildNodes1 = node1.getChildNodes().stream().filter(IS_RELEVANT_CHILD_NODE).collect(Collectors.toList());
         List<Node> relevantChildNodes2 = node2.getChildNodes().stream().filter(IS_RELEVANT_CHILD_NODE).collect(Collectors.toList());
-        if (relevantChildNodes1.size()!=relevantChildNodes2.size()) {
-            return false;
-        }
+
         if (node1.getClass() != node2.getClass()) {  // must be of the same kind
             return false;
+        }
+        if (node1 instanceof ClassOrInterfaceType) {
+            return analyseClassOrInterfaceType((ClassOrInterfaceType)node1,(ClassOrInterfaceType)node2);
         }
         if (node1 instanceof SimpleName) {
             return analyseCloneForSimpleNames((SimpleName)node1,(SimpleName)node2);
@@ -105,17 +107,37 @@ public class ASTBasedCloneDetector implements CloneDetector  {
             return analyseCloneForUnaryExpressions((UnaryExpr)node1, (UnaryExpr)node2);
         }
 
-        boolean result = true;
-        for (int i=0;i<relevantChildNodes1.size();i++) {
-            Node childNode1 = relevantChildNodes1.get(i);
-            Node childNode2 = relevantChildNodes2.get(i);
-            result = result && analyseClone(childNode1,childNode2);
-            // @TODO very coarse, likely to produce some FPs, should also look into actual type names, constants, operators etc
+        return analyseChildNodes(relevantChildNodes1,relevantChildNodes2);
+    }
 
+    static boolean analyseClassOrInterfaceType(ClassOrInterfaceType node1, ClassOrInterfaceType node2) {
+        // this is the actual relocation check -- packages (scope) are ignored
+        List<Node> relevantChildNodes1 = node1.getChildNodes().stream()
+            .filter(child -> node1.hasScope() && node1.getScope().get()!=child)
+            .collect(Collectors.toList());
+        List<Node> relevantChildNodes2 = node2.getChildNodes().stream()
+            .filter(child -> node2.hasScope() && node2.getScope().get()!=child)
+            .collect(Collectors.toList());
+       return analyseChildNodes(relevantChildNodes1,relevantChildNodes2);
+
+    }
+
+    static boolean analyseChildNodes(List<Node> childNodes1,List<Node> childNodes2) {
+        if (childNodes1.size()!=childNodes2.size()) {
+            return false;
+        }
+        boolean result = true;
+        for (int i=0;i<childNodes1.size();i++) {
+            Node childNode1 = childNodes1.get(i);
+            Node childNode2 = childNodes2.get(i);
+            result = result && analyseClone(childNode1,childNode2);
         }
         return result;
     }
 
+
+    // compare leaf nodes for equality
+    // need to check whether equals methods already do this !
     static boolean analyseCloneForSimpleNames(SimpleName node1, SimpleName node2) {
         return node1.getId().equals(node2.getId());
     }

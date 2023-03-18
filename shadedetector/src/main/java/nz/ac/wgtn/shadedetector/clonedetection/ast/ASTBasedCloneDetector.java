@@ -6,6 +6,7 @@ import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.PackageDeclaration;
 import com.github.javaparser.ast.comments.Comment;
+import com.github.javaparser.ast.expr.*;
 import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.utils.Pair;
 import nz.ac.wgtn.shadedetector.CloneDetector;
@@ -85,16 +86,60 @@ public class ASTBasedCloneDetector implements CloneDetector  {
         if (relevantChildNodes1.size()!=relevantChildNodes2.size()) {
             return false;
         }
+        if (node1.getClass() != node2.getClass()) {  // must be of the same kind
+            return false;
+        }
+        if (node1 instanceof SimpleName) {
+            return analyseCloneForSimpleNames((SimpleName)node1,(SimpleName)node2);
+        }
+        else if (node1 instanceof LiteralStringValueExpr)  {
+            return analyseCloneForLiterals((LiteralStringValueExpr)node1, (LiteralStringValueExpr)node2);
+        }
+        else if (node1 instanceof BooleanLiteralExpr)  {
+            return analyseCloneForLiterals((BooleanLiteralExpr)node1, (BooleanLiteralExpr)node2);
+        }
+        else if (node1 instanceof BinaryExpr)  {
+            return analyseCloneForBinaryExpressions((BinaryExpr)node1, (BinaryExpr)node2);
+        }
+        else if (node1 instanceof UnaryExpr)  {
+            return analyseCloneForUnaryExpressions((UnaryExpr)node1, (UnaryExpr)node2);
+        }
+
+        boolean result = true;
         for (int i=0;i<relevantChildNodes1.size();i++) {
             Node childNode1 = relevantChildNodes1.get(i);
             Node childNode2 = relevantChildNodes2.get(i);
-            if (childNode1.getClass() != childNode2.getClass()) {  // must be of the same kind
-                return false;
-            }
+            result = result && analyseClone(childNode1,childNode2);
             // @TODO very coarse, likely to produce some FPs, should also look into actual type names, constants, operators etc
 
         }
-        return true;
+        return result;
     }
+
+    static boolean analyseCloneForSimpleNames(SimpleName node1, SimpleName node2) {
+        return node1.getId().equals(node2.getId());
+    }
+
+    static boolean analyseCloneForLiterals(LiteralStringValueExpr node1, LiteralStringValueExpr node2) {
+        return node1.getValue().equals(node2.getValue());
+    }
+
+    static boolean analyseCloneForLiterals(BooleanLiteralExpr node1, BooleanLiteralExpr node2) {
+        return node1.getValue()==node2.getValue();
+    }
+
+    static boolean analyseCloneForBinaryExpressions(BinaryExpr node1, BinaryExpr node2) {
+        return node1.getOperator() == node2.getOperator() &&
+            analyseClone(node1.getLeft(),node2.getLeft())
+            && analyseClone(node1.getRight(),node2.getRight())
+            ;
+    }
+
+    static boolean analyseCloneForUnaryExpressions(UnaryExpr node1, UnaryExpr node2) {
+        return node1.getOperator() == node2.getOperator() &&
+            analyseClone(node1.getExpression(),node2.getExpression())
+            ;
+    }
+
 
 }

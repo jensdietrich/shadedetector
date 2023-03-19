@@ -11,8 +11,8 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ASTCloneDetectionTests {
 
@@ -72,17 +72,9 @@ public class ASTCloneDetectionTests {
         Set<Path> javaSources40 = new HashSet(Utils.listJavaSources(COMMONS_COLLECTIONS4_40_ORIGINAL,true));
         Set<Path> javaSources41 = new HashSet(Utils.listJavaSources(COMMONS_COLLECTIONS4_41_ORIGINAL,true));
         Set<CloneDetector.CloneRecord> records = new ASTBasedCloneDetector().detect(COMMONS_COLLECTIONS4_40_ORIGINAL,COMMONS_COLLECTIONS4_41_ORIGINAL);
-
         assertEquals(javaSources40.size(),records.size());
-        for (CloneDetector.CloneRecord record:records) {
-            assertEquals(1.0,record.getConvidence());
-        }
-//
-//        Set<Path> set1 = new HashSet<>(javaSources);
-//        Set<Path> set2 = records.stream()
-//                .map(r -> r.getOriginal())
-//                .collect(Collectors.toSet());
-//        assertEquals(set1,set2);
+        boolean someFail = records.stream().anyMatch(record -> record.getConvidence() < 1.0);
+        assertTrue(someFail);
     }
 
 

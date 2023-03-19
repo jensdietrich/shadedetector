@@ -82,16 +82,24 @@ public class ASTBasedCloneDetector implements CloneDetector  {
     }
 
     static boolean analyseClone(Node node1, Node node2) {
-        List<Node> relevantChildNodes1 = node1.getChildNodes().stream().filter(IS_RELEVANT_CHILD_NODE).collect(Collectors.toList());
-        List<Node> relevantChildNodes2 = node2.getChildNodes().stream().filter(IS_RELEVANT_CHILD_NODE).collect(Collectors.toList());
 
+        // refactoring might change access to static variable eg Foo.FIELD vs com.example.Foo.FIELD
+        // then com.example.Foo.FIELD is a FieldAccessExpr
+        if (node1 instanceof FieldAccessExpr && node2 instanceof NameExpr) {
+            return analyseCloneForFieldAccess((FieldAccessExpr)node1,(NameExpr)node2);
+        }
+        else if (node1 instanceof NameExpr && node2 instanceof FieldAccessExpr) {
+            return analyseCloneForFieldAccess((FieldAccessExpr)node2,(NameExpr)node1);
+        }
+
+        // but normally noden types should be the same
         if (node1.getClass() != node2.getClass()) {  // must be of the same kind
             return false;
         }
         if (node1 instanceof ClassOrInterfaceType) {
-            return analyseClassOrInterfaceType((ClassOrInterfaceType)node1,(ClassOrInterfaceType)node2);
+            return analyseCloneForClassOrInterfaceType((ClassOrInterfaceType)node1,(ClassOrInterfaceType)node2);
         }
-        if (node1 instanceof SimpleName) {
+        else if (node1 instanceof SimpleName) {
             return analyseCloneForSimpleNames((SimpleName)node1,(SimpleName)node2);
         }
         else if (node1 instanceof LiteralStringValueExpr)  {
@@ -106,20 +114,19 @@ public class ASTBasedCloneDetector implements CloneDetector  {
         else if (node1 instanceof UnaryExpr)  {
             return analyseCloneForUnaryExpressions((UnaryExpr)node1, (UnaryExpr)node2);
         }
+        else if (node1 instanceof MethodCallExpr) {
+            return analyseCloneForMethodCallExpr((MethodCallExpr)node1,(MethodCallExpr)node2);
+        }
 
+        List<Node> relevantChildNodes1 = node1.getChildNodes().stream().filter(IS_RELEVANT_CHILD_NODE).collect(Collectors.toList());
+        List<Node> relevantChildNodes2 = node2.getChildNodes().stream().filter(IS_RELEVANT_CHILD_NODE).collect(Collectors.toList());
         return analyseChildNodes(relevantChildNodes1,relevantChildNodes2);
     }
 
-    static boolean analyseClassOrInterfaceType(ClassOrInterfaceType node1, ClassOrInterfaceType node2) {
-        // this is the actual relocation check -- packages (scope) are ignored
-        List<Node> relevantChildNodes1 = node1.getChildNodes().stream()
-            .filter(child -> node1.hasScope() && node1.getScope().get()!=child)
-            .collect(Collectors.toList());
-        List<Node> relevantChildNodes2 = node2.getChildNodes().stream()
-            .filter(child -> node2.hasScope() && node2.getScope().get()!=child)
-            .collect(Collectors.toList());
-       return analyseChildNodes(relevantChildNodes1,relevantChildNodes2);
-
+    static boolean analyseCloneForFieldAccess(FieldAccessExpr node1, NameExpr node2) {
+       String typeName1 = node1.getNameAsString();
+       String typeName2 = node2.getNameAsString();
+       return typeName1.equals(typeName2);
     }
 
     static boolean analyseChildNodes(List<Node> childNodes1,List<Node> childNodes2) {
@@ -134,6 +141,33 @@ public class ASTBasedCloneDetector implements CloneDetector  {
         }
         return result;
     }
+
+    static boolean analyseCloneForClassOrInterfaceType(ClassOrInterfaceType node1, ClassOrInterfaceType node2) {
+        // this is the actual relocation check -- packages (scope) are ignored
+        boolean hasScope1 = node1.getScope().isPresent();
+        List<Node> relevantChildNodes1 = node1.getChildNodes().stream()
+            .filter(child -> !hasScope1 || node1.getScope().get()!=child)
+            .collect(Collectors.toList());
+        boolean hasScope2 = node2.getScope().isPresent();
+        List<Node> relevantChildNodes2 = node2.getChildNodes().stream()
+            .filter(child -> !hasScope2 || node2.getScope().get()!=child)
+            .collect(Collectors.toList());
+        return analyseChildNodes(relevantChildNodes1,relevantChildNodes2);
+    }
+
+    static boolean analyseCloneForMethodCallExpr(MethodCallExpr node1, MethodCallExpr node2) {
+
+        boolean hasScope1 = node1.getScope().isPresent();
+        List<Node> relevantChildNodes1 = node1.getChildNodes().stream()
+            .filter(child -> !hasScope1 || node1.getScope().get()!=child)
+            .collect(Collectors.toList());
+        boolean hasScope2 = node2.getScope().isPresent();
+        List<Node> relevantChildNodes2 = node2.getChildNodes().stream()
+            .filter(child -> !hasScope2 || node2.getScope().get()!=child)
+            .collect(Collectors.toList());
+        return analyseChildNodes(relevantChildNodes1,relevantChildNodes2);
+    }
+
 
 
     // compare leaf nodes for equality

@@ -34,16 +34,13 @@ public class Main {
 
         // we need a little language here to pass parameters, such as list:class1,class2
         // needs default
-        options.addOption("s", "classselector",true, "the strategy used to select classes (optional, default is\"" + CLASS_SELECTOR_FACTORY.getDefault().name() + "\"");
-        options.addOption("o", "output",true, "the component used to process and report results");
+        options.addOption("s", "classselector",true, "the strategy used to select classes (optional, default is\"" + CLASS_SELECTOR_FACTORY.getDefault().name() + "\")");
+        options.addOption("o", "output",true, "the component used to process and report results (optional, default is \"" + RESULT_REPORTER_FACTORY.getDefault().name() + "\")");
         options.addOption("o1", "output1",true, "an additional component used to process and report results");
         options.addOption("o2", "output2",true, "an additional component used to process and report results");
         options.addOption("o3", "output3",true, "an additional component used to process and report results");
-
-
-        options.addOption("h", "help",false, "print instructions");
-        options.addOption("c","clonedetector",true,"the clone detector to be used (optional, default is \"" + CLONE_DETECTOR_FACTORY.getDefault().name() + "\"");
-        options.addOption("r","resultconsolidation",true,"the query result consolidation strategy to be used (optional, default is \"" + CONSOLIDATION_STRATEGY_FACTORY.getDefault().name() + "\"");
+        options.addOption("c","clonedetector",true,"the clone detector to be used (optional, default is \"" + CLONE_DETECTOR_FACTORY.getDefault().name() + "\")");
+        options.addOption("r","resultconsolidation",true,"the query result consolidation strategy to be used (optional, default is \"" + CONSOLIDATION_STRATEGY_FACTORY.getDefault().name() + "\")");
 
         CommandLineParser parser = new DefaultParser();
 
@@ -59,12 +56,7 @@ public class Main {
         String groupId = cmd.getOptionValue("group");
         String artifactId = cmd.getOptionValue("artifact");
         String version = cmd.getOptionValue("version");
-        boolean helpRequested = cmd.hasOption("help");
         GAV gav = new GAV(groupId,artifactId,version);
-
-        if (helpRequested) {
-            printHelp(options);
-        }
 
         CloneDetector cloneDetector = instantiateOptional(CLONE_DETECTOR_FACTORY,cmd,"clone detector","clonedetector");
         ClassSelector classSelector = instantiateOptional(CLASS_SELECTOR_FACTORY,cmd,"class selector","classselector");
@@ -140,7 +132,7 @@ public class Main {
                 Path src = FetchResources.fetchSources(match);
                 Set<CloneDetector.CloneRecord> cloneAnalysesResults = cloneDetector.detect(sources,src);
 
-                // @TODO plugin arbitrary reportersresultReporter
+                // @TODO plugin arbitrary result reporters
                 LOGGER.info("Reporting results for " + match.getId());
                 resultReporter.report(artifact,match,cloneAnalysesResults);
 
@@ -166,6 +158,6 @@ public class Main {
         String header = "Arguments:\n\n";
         String footer = "\nPlease report issues at https://github.com/jensdietrich/shading-study/issues/";
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp("java Main", header, options, footer, true);
+        formatter.printHelp("java -cp <classpath> Main", header, options, footer, true);
     }
 }

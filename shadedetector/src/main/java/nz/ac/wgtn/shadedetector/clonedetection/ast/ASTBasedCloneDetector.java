@@ -8,7 +8,6 @@ import com.github.javaparser.ast.PackageDeclaration;
 import com.github.javaparser.ast.comments.Comment;
 import com.github.javaparser.ast.expr.*;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
-import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.utils.Pair;
 import nz.ac.wgtn.shadedetector.CloneDetector;
 import nz.ac.wgtn.shadedetector.Utils;

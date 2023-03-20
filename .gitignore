@@ -3,3 +3,4 @@ shadedetector/target
 shadedetector/.cache
 shadedetector/out
 result-summary.csv
+ai.tecton:java-client:0.1.0.csv

@@ -19,6 +19,7 @@ public class FetchResources {
     private static Logger LOGGER = LoggerFactory.getLogger(FetchResources.class);
     private static File BIN_CACHE = new File(".cache/bin");
     private static File SRC_CACHE = new File(".cache/src");
+    private static File POM_CACHE = new File(".cache/src");
     public static final String SEARCH_URL = "https://search.maven.org/remotecontent";
 
 
@@ -60,6 +61,15 @@ public class FetchResources {
         return fetch(gav,cached,".jar");
     }
 
+    public static Path fetchPOM (Artifact artifact) throws IOException {
+        GAV gav = new GAV(artifact.getGroupId(),artifact.getArtifactId(),artifact.getVersion());
+        if (!artifact.getResources().contains(".pom")) {
+            throw new IllegalStateException("no source code found for artifact " + artifact.getId());
+        }
+        Path cached = getCachedPOM(gav,"pom");
+        return fetch(gav,cached,".pom");
+    }
+
     public static Path fetchSources (Artifact artifact) throws IOException {
         GAV gav = new GAV(artifact.getGroupId(),artifact.getArtifactId(),artifact.getVersion());
         String sourceSuffix = artifact.getResources().stream()
@@ -90,6 +100,10 @@ public class FetchResources {
 
     private static Path getCachedBin(GAV gav,String suffix) {
         return getCached(BIN_CACHE,gav,gav.getArtifactId()+"-"+gav.getVersion()+suffix);
+    }
+
+    private static Path getCachedPOM(GAV gav,String suffix) {
+        return getCached(POM_CACHE,gav,gav.getArtifactId()+"-"+gav.getVersion()+suffix);
     }
 
     private static Path getCachedSrc(GAV gav,String suffix) {

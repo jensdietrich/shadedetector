@@ -5,6 +5,7 @@ import nz.ac.wgtn.shadedetector.Artifact;
 import nz.ac.wgtn.shadedetector.CloneDetector;
 import nz.ac.wgtn.shadedetector.ResultReporter;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
@@ -32,9 +33,23 @@ public class CombinedResultReporter implements ResultReporter  {
     }
 
     @Override
-    public void report(Artifact component, Artifact potentialClone, Set<CloneDetector.CloneRecord> cloneAnalysesResults) throws IOException {
+    public void report(Artifact component, Artifact potentialClone, List<Path> potentialCloneSources,Set<CloneDetector.CloneRecord> cloneAnalysesResults) throws IOException {
         for (ResultReporter reporter:delegates) {
-            reporter.report(component,potentialClone,cloneAnalysesResults);
+            reporter.report(component,potentialClone,potentialCloneSources,cloneAnalysesResults);
+        }
+    }
+
+    @Override
+    public void startReporting(Artifact component, Path sources) throws IOException {
+        for (ResultReporter reporter:delegates) {
+            reporter.startReporting(component,sources);
+        }
+    }
+
+    @Override
+    public void endReporting(Artifact component) throws IOException {
+        for (ResultReporter reporter:delegates) {
+            reporter.endReporting(component);
         }
     }
 }

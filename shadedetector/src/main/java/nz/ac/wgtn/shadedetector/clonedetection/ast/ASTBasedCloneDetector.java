@@ -54,7 +54,7 @@ public class ASTBasedCloneDetector implements CloneDetector  {
                 }
             }
 
-            LOGGER.info("Analysing {} pair of java source code",potentialMatches.size());
+            LOGGER.info("Analysing {} pairs of java source code",potentialMatches.size());
 
             return potentialMatches.stream()
                 .map(match -> analyseClone(match.a,match.b))

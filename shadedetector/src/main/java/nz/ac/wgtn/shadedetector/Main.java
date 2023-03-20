@@ -98,13 +98,13 @@ public class Main {
         }
 
         // find sources
-        Path sources = null;
+        Path originalSources = null;
         try {
-            sources = FetchResources.fetchSources(artifact);
+            originalSources = FetchResources.fetchSources(artifact);
         } catch (IOException e) {
             LOGGER.error("cannot fetch sources for " + gav.asString(),e);
         }
-        if (sources==null) {
+        if (originalSources==null) {
             LOGGER.error("cannot fecth sources for {}",artifact.toString());
             System.exit(1);
         }
@@ -112,7 +112,7 @@ public class Main {
         // find all potentially matching artifacts
         Map<String,ArtifactSearchResponse> matches = null;
         try {
-            matches = ArtifactSearch.findShadingArtifacts(sources,classSelector,10, ArtifactSearch.BATCHES,ArtifactSearch.ROWS_PER_BATCH);
+            matches = ArtifactSearch.findShadingArtifacts(originalSources,classSelector,10, ArtifactSearch.BATCHES,ArtifactSearch.ROWS_PER_BATCH);
         }
         catch (Exception e) {
             LOGGER.error("cannot fetch artifacts with matching classes from {}",gav,e);
@@ -125,21 +125,36 @@ public class Main {
 
         AtomicInteger countMatchesAnalysed = new AtomicInteger();
         AtomicInteger countMatchesAnalysedFailed = new AtomicInteger();
+
+        try {
+            resultReporter.startReporting(artifact,originalSources);
+        }
+        catch (IOException x) {
+            LOGGER.error("error initialising result reporting",x);
+        }
+
         for (Artifact match:consolidatedMatches) {
             countMatchesAnalysed.incrementAndGet();
             LOGGER.info("analysing whether artifact {} matches",match.getId());
             try {
                 Path src = FetchResources.fetchSources(match);
-                Set<CloneDetector.CloneRecord> cloneAnalysesResults = cloneDetector.detect(sources,src);
+                Set<CloneDetector.CloneRecord> cloneAnalysesResults = cloneDetector.detect(originalSources,src);
 
                 // @TODO plugin arbitrary result reporters
                 LOGGER.info("Reporting results for " + match.getId());
-                resultReporter.report(artifact,match,cloneAnalysesResults);
+                resultReporter.report(artifact,match,Utils.listJavaSources(src,true),cloneAnalysesResults);
 
             } catch (Exception e) {
                 LOGGER.error("cannot fetch sources for artifact {}",match.toString(),e);
                 countMatchesAnalysedFailed.incrementAndGet();
             }
+        }
+
+        try {
+            resultReporter.endReporting(artifact);
+        }
+        catch (IOException x) {
+            LOGGER.error("error finishing result reporting",x);
         }
 
 

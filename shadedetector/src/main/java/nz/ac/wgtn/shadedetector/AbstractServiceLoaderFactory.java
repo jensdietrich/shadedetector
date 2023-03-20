@@ -50,7 +50,7 @@ public abstract class AbstractServiceLoaderFactory<T extends NamedService> {
                 try {
                     BeanUtils.setProperty(service,key,value);
                 } catch (Exception e) {
-                    LOGGER.info("Cannot set property {} to value {} for service {} {} of type {}",key,value,serviceDescription,service.name(),service.getClass().getName(),e);
+                    LOGGER.warn("Cannot set property {} to value {} for service {} {} of type {}",key,value,serviceDescription,service.name(),service.getClass().getName(),e);
                 }
             }
         }

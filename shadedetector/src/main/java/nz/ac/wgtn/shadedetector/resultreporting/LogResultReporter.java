@@ -6,6 +6,8 @@ import nz.ac.wgtn.shadedetector.ResultReporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -25,7 +27,7 @@ public class LogResultReporter implements ResultReporter {
     }
 
     @Override
-    public void report(Artifact component, Artifact potentialClone, Set<CloneDetector.CloneRecord> cloneAnalysesResults) throws IOException {
+    public void report(Artifact component, Artifact potentialClone, List<Path> potentialCloneSpources, Set<CloneDetector.CloneRecord> cloneAnalysesResults) throws IOException {
         for (CloneDetector.CloneRecord record:cloneAnalysesResults) {
             LOGGER.info("Potential clone");
             LOGGER.info("\tcomponent: {}", component.getId());
@@ -36,4 +38,13 @@ public class LogResultReporter implements ResultReporter {
         }
     }
 
+    @Override
+    public void startReporting(Artifact component, Path sources) throws IOException {
+        LOGGER.info("Start result reporting");
+    }
+
+    @Override
+    public void endReporting(Artifact component) throws IOException {
+        LOGGER.info("Finish result reporting");
+    }
 }

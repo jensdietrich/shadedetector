@@ -16,13 +16,13 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Reporting based on CSV.
+ * Reporting based on CSV, will report a separate file for each pair of artifacts analysed.
  * @author jens dietrich
  */
-public class CSVResultReporter implements ResultReporter {
+public class CSVDetailedResultReporter implements ResultReporter {
 
     public static final String SEP = "\t";
-    private static Logger LOGGER = LoggerFactory.getLogger(CSVResultReporter.class);
+    private static Logger LOGGER = LoggerFactory.getLogger(CSVDetailedResultReporter.class);
 
     public static final String[] COLUMNS = new String[] {
         "original-artifact",
@@ -32,31 +32,32 @@ public class CSVResultReporter implements ResultReporter {
         "similarity score"
     };
 
-    // the destination folder, a separet file will be created for each artifact
-    private String dest = null;
+    // the destination folder, a separate file will be created for each artifact
+    private String dir = "out";
 
-    public CSVResultReporter(String dest) {
-        this.dest = dest;
+    public CSVDetailedResultReporter(String dir) {
+        this.dir = dir;
     }
 
-    public CSVResultReporter() {
+    public CSVDetailedResultReporter() {
+
     }
 
-    public String getDest() {
-        return dest;
+    public String getDir() {
+        return dir;
     }
 
-    public void setDest(String dest) {
-        this.dest = dest;
+    public void setDir(String dest) {
+        this.dir = dest;
     }
 
     @Override
     public String name() {
-        return "csv";
+        return "csv.details";
     }
 
     @Override
-    public void report(Artifact component, Artifact potentialClone, Set<CloneDetector.CloneRecord> cloneAnalysesResults) throws IOException {
+    public void report(Artifact component, Artifact potentialClone, List<Path> potentialCloneSources, Set<CloneDetector.CloneRecord> cloneAnalysesResults) throws IOException {
         String header = Stream.of(COLUMNS).collect(Collectors.joining(SEP));
         List<String> rows = new ArrayList<>();
         rows.add(header);
@@ -66,14 +67,19 @@ public class CSVResultReporter implements ResultReporter {
             rows.add(row);
         }
 
-        Path folder = Path.of(dest);
+        Path folder = Path.of(dir);
         if (Files.notExists(folder)) {
             Files.createDirectories(folder);
         }
 
-        Path report = Paths.get(dest, potentialClone.getId()+".csv");
+        Path report = Paths.get(dir, potentialClone.getId()+".csv");
         LOGGER.info("Reporting to " + report.toFile().getAbsolutePath());
         Files.write(report,rows);
     }
 
+    @Override
+    public void startReporting(Artifact component, Path sources) {}
+
+    @Override
+    public void endReporting(Artifact component) {}
 }

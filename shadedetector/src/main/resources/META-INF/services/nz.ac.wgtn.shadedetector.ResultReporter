@@ -1,2 +1,3 @@
 nz.ac.wgtn.shadedetector.resultreporting.LogResultReporter
-nz.ac.wgtn.shadedetector.resultreporting.CSVResultReporter
+nz.ac.wgtn.shadedetector.resultreporting.CSVDetailedResultReporter
+nz.ac.wgtn.shadedetector.resultreporting.CSVSummaryResultReporter

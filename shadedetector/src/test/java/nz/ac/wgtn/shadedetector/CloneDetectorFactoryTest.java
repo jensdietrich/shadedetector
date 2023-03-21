@@ -1,6 +1,6 @@
 package nz.ac.wgtn.shadedetector;
 
-import nz.ac.wgtn.shadedetector.clonedetection.DummyCloneDetector;
+import nz.ac.wgtn.shadedetector.clonedetection.ast.ASTBasedCloneDetector;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -8,10 +8,10 @@ public class CloneDetectorFactoryTest {
 
     @Test
     public void testSelectAll() {
-        CloneDetector cloneDetector = new CloneDetectorFactory().create("dummy");
+        CloneDetector cloneDetector = new CloneDetectorFactory().create("ast");
         assertNotNull(cloneDetector);
-        assertEquals("dummy",cloneDetector.name());
-        assertTrue(cloneDetector instanceof DummyCloneDetector);
+        assertEquals("ast",cloneDetector.name());
+        assertTrue(cloneDetector instanceof ASTBasedCloneDetector);
     }
 
     @Test

@@ -1,6 +1,5 @@
 package nz.ac.wgtn.shadedetector;
 
-import nz.ac.wgtn.shadedetector.clonedetection.DummyCloneDetector;
 import nz.ac.wgtn.shadedetector.resultsetconsolidation.ArtifactOccursInAllResultSets;
 import nz.ac.wgtn.shadedetector.resultsetconsolidation.ArtifactOccursInAnyResultSet;
 import nz.ac.wgtn.shadedetector.resultsetconsolidation.ArtifactOccursInMoreThanOneResultSets;

@@ -17,11 +17,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class FetchResources {
 
     private static Logger LOGGER = LoggerFactory.getLogger(FetchResources.class);
-    private static File BIN_CACHE = new File(".cache/bin");
-    private static File SRC_CACHE = new File(".cache/src");
-    private static File POM_CACHE = new File(".cache/src");
+    private static File BIN_CACHE = Cache.getCache("bin");
+    private static File SRC_CACHE = Cache.getCache("src");
+    private static File POM_CACHE = Cache.getCache("pom");
     public static final String SEARCH_URL = "https://search.maven.org/remotecontent";
-
 
     // for testing only
     // @TODO remove

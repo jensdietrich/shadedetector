@@ -23,8 +23,8 @@ public class ArtifactSearch {
 
     private static Logger LOGGER = LoggerFactory.getLogger(ArtifactSearch.class);
 
-    private static File CACHE_BY_CLASSNAME = new File(".cache/artifacts-using-classes");
-    private static File CACHE_ARTIFACT_VERSIONS = new File(".cache/artifacts-versions");
+    private static File CACHE_BY_CLASSNAME = Cache.getCache("artifacts-using-classes");
+    private static File CACHE_ARTIFACT_VERSIONS = Cache.getCache("artifacts-versions");
 
     // https://search.maven.org/solrsearch/select?q=c:junit&rows=20&wt=json
     public static final String SEARCH_URL = "https://search.maven.org/solrsearch/select";

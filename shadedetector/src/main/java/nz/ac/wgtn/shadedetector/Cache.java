@@ -34,5 +34,14 @@ public class Cache {
         return dir;
     }
 
+    public static boolean clearCache(String name) {
+        File dir = new File(ROOT,name);
+        if (dir.exists()) {
+            LOGGER.info("Clearing cache folder {}",dir.getAbsolutePath());
+            return dir.delete();
+        }
+        return true;
+    }
+
 
 }

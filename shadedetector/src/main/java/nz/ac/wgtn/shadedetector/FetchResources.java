@@ -71,7 +71,7 @@ public class FetchResources {
         if (!artifact.getResources().contains(".pom")) {
             throw new IllegalStateException("no source code found for artifact " + artifact.getId());
         }
-        Path cached = getCachedPOM(gav,"pom");
+        Path cached = getCachedPOM(gav,".pom");
         return fetch(gav,cached,".pom");
     }
 
@@ -92,6 +92,9 @@ public class FetchResources {
 
     private static Path fetch(GAV gav,Path cached,String suffix) throws IOException {
         // https://search.maven.org/remotecontent?filepath=com/jolira/guice/3.0.0/guice-3.0.0.pom
+        if (Files.exists(cached)) {
+            return cached;
+        }
         OkHttpClient client = new OkHttpClient();
         HttpUrl.Builder urlBuilder = HttpUrl.parse(SEARCH_URL).newBuilder();
         String remotePath = gav.getGroupId().replace(".","/");

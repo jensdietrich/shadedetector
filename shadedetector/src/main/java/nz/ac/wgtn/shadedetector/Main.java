@@ -104,8 +104,9 @@ public class Main {
         } catch (IOException e) {
             LOGGER.error("cannot fetch sources for " + gav.asString(),e);
         }
+
         if (originalSources==null) {
-            LOGGER.error("cannot fecth sources for {}",artifact.toString());
+            LOGGER.error("no sources available for sources for {}",artifact.getId());
             System.exit(1);
         }
 
@@ -119,10 +120,36 @@ public class Main {
         }
 
         // consolidate results
+        LOGGER.info("{} potential matches found",matches.size());
         List<Artifact> consolidatedMatches = resultConsolidationStrategy.consolidate(matches);
+        LOGGER.info("matched consolidated to {}",consolidatedMatches.size());
+
+        // eliminate matches with dependency -- those are likely to be detected by existing checkers
+        List<Artifact> candidates = new ArrayList<>();
+
+        AtomicInteger matchesWithDependency = new AtomicInteger();
+        AtomicInteger matchesWithoutDependency = new AtomicInteger();
+        AtomicInteger matchesWhereDependencyAnalysisFailed  = new AtomicInteger();
+        for (Artifact match:consolidatedMatches) {
+            try {
+                if (POMAnalysis.references(match,artifact.getGroupId(),artifact.getArtifactId())) {
+                    matchesWithDependency.incrementAndGet();
+                }
+                else {
+                    matchesWithoutDependency.incrementAndGet();
+                    candidates.add(match);
+                }
+            } catch (Exception e) {
+                matchesWhereDependencyAnalysisFailed.incrementAndGet();
+                LOGGER.info("Error fetching or analysing pom for {}",match.getId(),e);
+            }
+        }
+        LOGGER.info("{} potential matches have declared dependency on {}:{}, will be excluded from further analysis",matchesWithDependency.get(),artifact.getGroupId(),artifact.getArtifactId());
+        LOGGER.info("{} potential matches detected without declared dependency on {}:{}, will be analysed for clones",matchesWithoutDependency.get(),artifact.getGroupId(),artifact.getArtifactId());
+        LOGGER.info("dependency analysis failed for {} artifacts",matchesWhereDependencyAnalysisFailed.get());
+
 
         // run clone detection
-
         AtomicInteger countMatchesAnalysed = new AtomicInteger();
         AtomicInteger countMatchesAnalysedFailed = new AtomicInteger();
 
@@ -133,7 +160,10 @@ public class Main {
             LOGGER.error("error initialising result reporting",x);
         }
 
-        for (Artifact match:consolidatedMatches) {
+
+        // filter matches -- only
+
+        for (Artifact match:candidates) {
             countMatchesAnalysed.incrementAndGet();
             LOGGER.info("analysing whether artifact {} matches",match.getId());
             try {

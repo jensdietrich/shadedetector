@@ -54,7 +54,7 @@ public class MvnRestAPIClient {
         }
 
         OkHttpClient client = new OkHttpClient();
-        LOGGER.info("\tsearch url: {} (attempt {})",url,attempt);
+        LOGGER.info("search url: {} (attempt {})",url,attempt);
         Request request = new Request.Builder().url(url).build();
         Call call = client.newCall(request);
         Response response = null;

@@ -94,4 +94,10 @@ public class ASTUtilsTest {
 
     }
 
+    @Test
+    public void testExtractingFullyQualifiedClassName() throws IOException {
+        String qName = ASTUtils.getFullyQualifiedClassname(originalSRC);
+        assertEquals("com.example.Driver",qName);
+    }
+
 }

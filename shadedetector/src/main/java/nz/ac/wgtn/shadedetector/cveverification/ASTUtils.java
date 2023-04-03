@@ -6,7 +6,6 @@ import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.NodeList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.List;
@@ -41,6 +40,13 @@ public class ASTUtils {
             .filter(filter)
             .map(imp -> imp.getName().asString())
             .collect(Collectors.toList());
+    }
+
+    public static String getFullyQualifiedClassname(Path src) throws IOException {
+        CompilationUnit cu = StaticJavaParser.parse(src);
+        return cu.getPrimaryType()
+            .map(type -> type.getFullyQualifiedName())
+            .get().orElseThrow(() -> new IllegalStateException("No class definition found in " + src));
     }
 
     public static void updateImports(Path projectFolderOrJavaSource, Function<String,String> importTranslation) throws IOException {

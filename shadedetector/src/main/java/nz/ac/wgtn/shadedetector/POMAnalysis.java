@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -50,6 +51,21 @@ public class POMAnalysis {
     static boolean hasDependency (Path pom, Predicate<MVNDependency> condition) throws Exception {
         List<MVNDependency> dependencies = getDependencies(pom.toFile());
         return dependencies.stream().anyMatch(condition);
+    }
+
+    public static boolean hasGroupAndArtifactId(Artifact artifact,String groupId, String artifactId) throws Exception {
+        Path pom = FetchResources.fetchPOM(artifact);
+        return hasGroupAndArtifactId(pom,groupId,artifactId);
+    }
+
+    public static boolean hasGroupAndArtifactId(Path pom,String groupId, String artifactId) throws Exception {
+        NodeList aNode = Utils.evalXPath(pom.toFile(), "/project/artifactId");
+        NodeList gNode = Utils.evalXPath(pom.toFile(), "/project/groupId");
+        // todo: can group be inherited from parent ?
+        if (aNode.getLength()>0 && gNode.getLength()>0) {
+            return aNode.item(0).getTextContent().equals(artifactId) && gNode.item(0).getTextContent().equals(groupId);
+        }
+        return false;
     }
 
     public static List<MVNDependency> getDependencies(File pom) throws Exception {
@@ -116,7 +132,8 @@ public class POMAnalysis {
     }
 
     public static boolean references(Artifact artifact,String groupId,String artifactId) throws Exception {
-        return hasDependency(artifact,groupId,artifactId) || shadePluginIncludes(artifact,groupId,artifactId);
+        Path pom = FetchResources.fetchPOM(artifact);
+        return hasDependency(pom,groupId,artifactId) || shadePluginIncludes(pom,groupId,artifactId) || hasGroupAndArtifactId(pom,groupId,artifactId);
     }
 
 }

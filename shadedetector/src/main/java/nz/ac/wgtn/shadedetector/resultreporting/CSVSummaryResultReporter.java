@@ -118,7 +118,7 @@ public class CSVSummaryResultReporter implements ResultReporter {
         LOGGER.info("Reporting to " + aFile.getAbsolutePath());
 
         String header = Stream.of(COLUMNS).collect(Collectors.joining(SEP));
-        Files.write(aFile.toPath(),List.of(header), StandardOpenOption.CREATE);
+        Files.write(aFile.toPath(),List.of(header), StandardOpenOption.TRUNCATE_EXISTING,StandardOpenOption.WRITE,StandardOpenOption.CREATE);
 
         originalSources = Utils.listJavaSources(sources,true);
     }

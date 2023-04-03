@@ -14,7 +14,7 @@ import static nz.ac.wgtn.shadedetector.Utils.getUnqualifiedJavaClassNames;
  */
 public class SelectClassesWithComplexNames implements ClassSelector {
 
-    private int maxSize = 100;
+    private int maxSize = 10;
 
     public int getMaxSize() {
         return maxSize;

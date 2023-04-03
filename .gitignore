@@ -7,3 +7,5 @@ ai.tecton:java-client:0.1.0.csv
 shadedetector/.test-cache
 shadedetector/.tmp
 shadedetector/out-snakeyaml
+shadedetector/out-fastjson-1.2.80
+shadedetector/out-fastjson-1.2.28

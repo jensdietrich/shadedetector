@@ -51,4 +51,24 @@ public class POMAnalysisTest {
         assertFalse(POMAnalysis.shadePluginIncludes(pom.toPath(),"org.yaaml.foo","bar"));
     }
 
+    @Test
+    public void testGAVMatch1() throws Exception {
+        File pom = new File(POMAnalysisTest.class.getResource("/poms/jmx_prometheus_javaagent-0.3.0.pom").getFile());
+        Assumptions.assumeTrue(pom.exists());
+        assertTrue(POMAnalysis.hasGroupAndArtifactId(pom.toPath(),"io.prometheus.jmx","jmx_prometheus_javaagent"));
+    }
+
+    @Test
+    public void testGAVNonMatch1() throws Exception {
+        File pom = new File(POMAnalysisTest.class.getResource("/poms/jmx_prometheus_javaagent-0.3.0.pom").getFile());
+        Assumptions.assumeTrue(pom.exists());
+        assertFalse(POMAnalysis.hasGroupAndArtifactId(pom.toPath(),"foo","jmx_prometheus_javaagent"));
+    }
+
+    @Test
+    public void testGAVNonMatch2() throws Exception {
+        File pom = new File(POMAnalysisTest.class.getResource("/poms/jmx_prometheus_javaagent-0.3.0.pom").getFile());
+        Assumptions.assumeTrue(pom.exists());
+        assertFalse(POMAnalysis.hasGroupAndArtifactId(pom.toPath(),"io.prometheus.jmx","foo"));
+    }
 }

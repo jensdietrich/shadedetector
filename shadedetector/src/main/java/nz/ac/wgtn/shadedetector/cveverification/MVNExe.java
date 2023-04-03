@@ -25,6 +25,14 @@ public class MVNExe {
         return mvn(projectFolder, Collections.EMPTY_MAP,"clean","test");
     }
 
+    public static ProcessResult mvnCleanCompile(Path projectFolder, Map<String,String> environmentVariables, String... phases) throws Exception {
+        return mvn(projectFolder,environmentVariables,"clean","compile");
+    }
+
+    public static ProcessResult mvnCleanCompile(Path projectFolder, String... phases) throws Exception {
+        return mvn(projectFolder, Collections.EMPTY_MAP,"clean","compile");
+    }
+
     public static ProcessResult mvn(Path projectFolder, Map<String,String> environmentVariables, String... phases) throws Exception {
 
         Preconditions.checkArgument(Files.exists(projectFolder));

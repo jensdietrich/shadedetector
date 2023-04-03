@@ -1,10 +1,15 @@
 package nz.ac.wgtn.shadedetector;
 
+import com.google.common.base.Preconditions;
+import nz.ac.wgtn.shadedetector.cveverification.MVNExe;
+import nz.ac.wgtn.shadedetector.cveverification.POMUtils;
 import nz.ac.wgtn.shadedetector.resultreporting.CombinedResultReporter;
 import org.apache.commons.cli.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zeroturnaround.exec.ProcessResult;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +30,9 @@ public class Main {
     private static ArtifactSearchResultConsolidationStrategyFactory CONSOLIDATION_STRATEGY_FACTORY = new ArtifactSearchResultConsolidationStrategyFactory();
     private static ResultReporterFactory RESULT_REPORTER_FACTORY = new ResultReporterFactory();
 
+    private static final String DEFAULT_GENERATED_VERIFICATION_PROJECT_GROUP_NAME = "foo";
+    private static final String DEFAULT_GENERATED_VERIFICATION_PROJECT_VERSION = "0.0.1";
+
     public static void main (String[] args) throws ParseException {
         Options options = new Options();
         options.addRequiredOption("g", "group",true, "the Maven group id of the artifact queried for clones");
@@ -41,6 +49,11 @@ public class Main {
         options.addOption("o3", "output3",true, "an additional component used to process and report results");
         options.addOption("c","clonedetector",true,"the clone detector to be used (optional, default is \"" + CLONE_DETECTOR_FACTORY.getDefault().name() + "\")");
         options.addOption("r","resultconsolidation",true,"the query result consolidation strategy to be used (optional, default is \"" + CONSOLIDATION_STRATEGY_FACTORY.getDefault().name() + "\")");
+
+        options.addOption("vul","vulnerabilitydemo",true,"a folder containing a Maven project that verifies a vulnerability in the original library with test(s), and can be used as a template to verify the presence of the vulnerability in a clone");
+        options.addOption("vo","vulnerabilityoutput",true,"the root folder where for each clone, a project verifying the presence of a vulnerability is created");
+        options.addOption("vg","vulnerabilitygroup",true,"the group name used in the projects generated to verify the presence of a vulnerability (default is \"" + DEFAULT_GENERATED_VERIFICATION_PROJECT_GROUP_NAME + "\")");
+        options.addOption("vv","vulnerabilityversion",true,"the version used in the projects generated to verify the presence of a vulnerability (default is \"" + DEFAULT_GENERATED_VERIFICATION_PROJECT_VERSION + "\")");
 
         CommandLineParser parser = new DefaultParser();
 
@@ -160,6 +173,45 @@ public class Main {
             LOGGER.error("error initialising result reporting",x);
         }
 
+        // see whether vulnerability verification is available
+        Path verificationProjectTemplateFolder = null;
+        boolean isValidVerificationProjectTemplate = false;
+        if (cmd.hasOption("vulnerabilitydemo")) {
+            verificationProjectTemplateFolder = Path.of(cmd.getOptionValue("vulnerabilitydemo"));
+            try {
+                checkVerificationProject(verificationProjectTemplateFolder);
+                isValidVerificationProjectTemplate = true;
+                LOGGER.info("vulnerability verification project is not valid");
+            }
+            catch (Exception x) {
+                LOGGER.error("vulnerability verification project is valid");
+            }
+        }
+        Path verificationProjectInstancesFolder = null;
+        if (cmd.hasOption("vulnerabilityoutput")) {
+            verificationProjectInstancesFolder = Path.of(cmd.getOptionValue("vulnerabilityoutput"));
+            if (!Files.exists(verificationProjectInstancesFolder)) {
+                try {
+                    Files.createDirectories(verificationProjectInstancesFolder);
+                } catch (IOException e) {
+                    throw new RuntimeException("cannot create folder " + verificationProjectInstancesFolder,e);
+                }
+            }
+        }
+        LOGGER.info("verification projects will be created in {}",verificationProjectInstancesFolder);
+        assert verificationProjectInstancesFolder!=null;
+
+        String verificationProjectGroupName = DEFAULT_GENERATED_VERIFICATION_PROJECT_GROUP_NAME;
+        if (cmd.hasOption("vulnerabilitygroup")) {
+            verificationProjectGroupName = cmd.getOptionValue("vulnerabilitygroup");
+        }
+        LOGGER.info("verification projects will be use group name {}",verificationProjectGroupName);
+
+        String verificationProjectVersion= DEFAULT_GENERATED_VERIFICATION_PROJECT_VERSION;
+        if (cmd.hasOption("vulnerabilityversion")) {
+            verificationProjectVersion = cmd.getOptionValue("vulnerabilityversion");
+        }
+        LOGGER.info("verification projects will be use version {}",verificationProjectVersion);
 
         // filter matches -- only
 
@@ -187,6 +239,41 @@ public class Main {
             LOGGER.error("error finishing result reporting",x);
         }
 
+
+    }
+
+    // check the vulnerability verification project (template)
+    private static void checkVerificationProject(Path verificationProjectTemplateFolder) throws Exception {
+        Preconditions.checkArgument(Files.exists(verificationProjectTemplateFolder),"project folder missing: " + verificationProjectTemplateFolder);
+        Preconditions.checkArgument(Files.isDirectory(verificationProjectTemplateFolder),"folder expected here: " + verificationProjectTemplateFolder);
+        Path pom = verificationProjectTemplateFolder.resolve("pom.xml");
+        Preconditions.checkArgument(Files.exists(pom),"not a Maven project (pom.xml missing): " + verificationProjectTemplateFolder);
+
+        try {
+            POMUtils.parsePOM(pom);
+        }
+        catch (Exception x) {
+            throw new RuntimeException("Not a valid pom: " + pom,x);
+        }
+
+        ProcessResult buildResult = null;
+        try {
+            buildResult = MVNExe.mvnCleanCompile(verificationProjectTemplateFolder);
+        }
+        catch (Exception x) {
+            throw new RuntimeException("Project cannot be build: " + verificationProjectTemplateFolder,x);
+        }
+        if (buildResult.getExitValue()!=0) {
+            List<String> buildLog = MVNExe.extractOutput(buildResult);
+            LOGGER.warn("build output starts here -----------");
+            for (String line:buildLog) {
+                LOGGER.warn(line);
+            }
+            LOGGER.warn("build output ends here -----------");
+            throw new RuntimeException("Project cannot be build, check logs for output: " + verificationProjectTemplateFolder);
+        }
+
+        // TODO could verify that tests fail here !
 
     }
 

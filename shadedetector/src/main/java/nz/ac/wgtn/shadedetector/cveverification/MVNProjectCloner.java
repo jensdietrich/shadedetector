@@ -20,9 +20,9 @@ import java.util.function.Function;
  * Rewrite imports using a translation function of required (in case packages have been renamed).
  * @author jens dietrich
  */
-public class POMProjectCloner {
+public class MVNProjectCloner {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(POMProjectCloner.class);
+    private static Logger LOGGER = LoggerFactory.getLogger(MVNProjectCloner.class);
 
     public static void cloneMvnProject (Path originalProjectFolder, Path clonedProjectFolder, GAV originalDependency, GAV cloneDependency, GAV clonedProjectCoordinates, Function<String,String> importTranslation) throws IOException, JDOMException {
 

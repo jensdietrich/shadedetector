@@ -3,16 +3,12 @@ package nz.ac.wgtn.shadedetector.cveverification;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.ImportDeclaration;
-import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.NodeList;
-import com.github.javaparser.ast.body.TypeDeclaration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -25,7 +21,7 @@ import java.util.stream.Collectors;
 
 public class ASTUtils {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(POMProjectCloner.class);
+    private static Logger LOGGER = LoggerFactory.getLogger(MVNProjectCloner.class);
 
     public static Predicate<ImportDeclaration> ALL = imp -> true;
     public static Predicate<ImportDeclaration> HAS_WILDCARDS = imp -> imp.isAsterisk();

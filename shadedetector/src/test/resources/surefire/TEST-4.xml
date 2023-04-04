@@ -25,6 +25,6 @@
     <property name="native.encoding" value="UTF-8"/>
     <property name="java.class.version" value="63.0"/>
   </properties>
-  <testcase name="test1" classname="foo.Tests" time="0.333"/>
-  <testcase name="test2" classname="foo.Tests" time="0.012"/>
+  <testcase name="test1" classname="foo.Tests4" time="0.333"/>
+  <testcase name="test2" classname="foo.Tests4" time="0.012"/>
 </testsuite>

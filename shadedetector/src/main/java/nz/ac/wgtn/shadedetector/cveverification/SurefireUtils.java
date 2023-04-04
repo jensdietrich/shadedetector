@@ -9,7 +9,11 @@ import javax.xml.XMLConstants;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Utilities to analyse surefire test results.
@@ -74,8 +78,37 @@ public class SurefireUtils {
         }
     }
 
+    static TestResults merge (Collection<TestResults> parts) {
+        int testCount = parts.stream().mapToInt(p -> p.getTestCount()).sum();
+        int errorCount = parts.stream().mapToInt(p -> p.getErrorCount()).sum();
+        int failureCount = parts.stream().mapToInt(p -> p.getFailureCount()).sum();
+        int skippedCount = parts.stream().mapToInt(p -> p.getSkippedCount()).sum();
+        return new TestResults(testCount,errorCount,failureCount,skippedCount);
+    }
+
+    public static TestResults parseSurefireReports (Path folder) throws IOException, JDOMException {
+        Preconditions.checkArgument(Files.exists(folder));
+        Preconditions.checkArgument(Files.isDirectory(folder),"this function is for parsing a folder containing surefire reports in xml format");
+
+        List<TestResults> results = Files.list(folder)
+            .filter(p -> p.toString().endsWith(".xml"))
+            .filter(Files::isRegularFile)
+            .map(f -> {
+                try {
+                    return parseSurefireReport(f);
+                }
+                catch (Exception x) {
+                    throw new RuntimeException(x);
+                }
+            })
+            .collect(Collectors.toList());
+        return merge(results);
+
+    }
+
     public static TestResults parseSurefireReport (Path report) throws IOException, JDOMException {
         Preconditions.checkArgument(Files.exists(report));
+        Preconditions.checkArgument(!Files.isDirectory(report),"this function is for parsing a single surefire report in XML format");
         //<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report-3.0.xsd" version="3.0" name="ConfirmVulnerabilitiesTests" time="0.355" tests="2" errors="0" skipped="0" failures="0">
         Document doc = parseXML(report);
         Element root = doc.getRootElement();

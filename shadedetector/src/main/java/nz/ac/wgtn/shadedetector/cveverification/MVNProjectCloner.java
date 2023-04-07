@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Comparator;
+import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -56,29 +57,43 @@ public class MVNProjectCloner {
 
 
     static void copyMvnProject(Path originalProjectFolder, Path clonedProjectFolder) throws IOException {
-        if (Files.exists(clonedProjectFolder)) {
+
+//        Files.delete(clonedProjectFolder);
+        if (!Files.exists(clonedProjectFolder)) {
             Files.createDirectories(clonedProjectFolder);
         }
 
-        // if cloned folder is not empty, make it empty
-        Files.walk(clonedProjectFolder)
-            .sorted(Comparator.reverseOrder())
-            .map(Path::toFile)
-            .forEach(File::delete);
+//        // if cloned folder is not empty, make it empty
+//        Files.walk(clonedProjectFolder)
+//            .sorted(Comparator.reverseOrder())
+//            .map(Path::toFile)
+//            .forEach(File::delete);
 
         Files.walkFileTree(originalProjectFolder, new SimpleFileVisitor<Path>() {
+
+            final Set<Path> skipCopyFolders = Set.of(
+                originalProjectFolder.resolve("target"),
+                originalProjectFolder.resolve(".idea"),
+                originalProjectFolder.resolve("scan-results"),
+                originalProjectFolder.resolve(".git")
+            );
+
             @Override
             public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
-
-                if (dir.toString().contains("target")) throw new RuntimeException("todo: filter out target, git and IDE meta data");
-                Files.createDirectories(clonedProjectFolder.resolve(originalProjectFolder.relativize(dir)));
-                return FileVisitResult.CONTINUE;
+                if (skipCopyFolders.contains(dir)) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                else {
+                    Files.createDirectories(clonedProjectFolder.resolve(originalProjectFolder.relativize(dir)));
+                    return FileVisitResult.CONTINUE;
+                }
             }
 
             @Override
             public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
-                if (file.toString().contains("target")) throw new RuntimeException("todo: filter out target, git and IDE meta data");
-                Files.copy(file,clonedProjectFolder.resolve(originalProjectFolder.relativize(file)));
+                if (Files.isRegularFile(file) && !Files.isHidden(file)) {
+                    Files.copy(file, clonedProjectFolder.resolve(originalProjectFolder.relativize(file)));
+                }
                 return FileVisitResult.CONTINUE;
             }
         });

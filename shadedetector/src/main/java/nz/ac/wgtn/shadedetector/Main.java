@@ -2,6 +2,7 @@ package nz.ac.wgtn.shadedetector;
 
 import com.google.common.base.Preconditions;
 import nz.ac.wgtn.shadedetector.cveverification.MVNExe;
+import nz.ac.wgtn.shadedetector.cveverification.MVNProjectCloner;
 import nz.ac.wgtn.shadedetector.cveverification.POMUtils;
 import nz.ac.wgtn.shadedetector.resultreporting.CombinedResultReporter;
 import org.apache.commons.cli.*;
@@ -225,6 +226,26 @@ public class Main {
                 // @TODO plugin arbitrary result reporters
                 LOGGER.info("Reporting results for " + match.getId());
                 resultReporter.report(artifact,match,Utils.listJavaSources(src,true),cloneAnalysesResults);
+
+                // TODO abstract threshold
+                if (cloneAnalysesResults.size()>10) {
+                    LOGGER.info("generating project to verifify vulnerability for " + match);
+                    String verificationProjectArtifactName = match.toString().replace(":","__");
+                    LOGGER.info("\tgroupId: " + verificationProjectGroupName);
+                    LOGGER.info("\tartifactId: " + verificationProjectArtifactName);
+                    LOGGER.info("\tversion: " + verificationProjectVersion);
+                    Path verificationProjectFolder = verificationProjectInstancesFolder.resolve(verificationProjectArtifactName);
+                    LOGGER.info("\tproject folder: " + verificationProjectFolder);
+
+                    MVNProjectCloner.cloneMvnProject(
+                        verificationProjectTemplateFolder,
+                        verificationProjectFolder,
+                        gav,
+                        match.asGAV(),
+                        new GAV(verificationProjectGroupName,verificationProjectArtifactName,verificationProjectVersion),
+                        name -> name  // @TODO
+                    );
+                }
 
             } catch (Exception e) {
                 LOGGER.error("cannot fetch sources for artifact {}",match.toString(),e);

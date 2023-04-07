@@ -95,6 +95,14 @@ public class Artifact {
         this.tags = tags;
     }
 
+    public GAV asGAV() {
+        return new GAV(this.groupId,this.artifactId,this.version);
+    }
+
+    @Override
+    public String toString() {
+        return asGAV().asString();
+    }
 
     @Override
     public boolean equals(Object o) {

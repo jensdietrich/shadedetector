@@ -29,7 +29,7 @@ public class MVNExe {
         return mvn(projectFolder,environmentVariables,"clean","compile");
     }
 
-    public static ProcessResult mvnCleanCompile(Path projectFolder, String... phases) throws Exception {
+    public static ProcessResult mvnCleanCompile(Path projectFolder) throws Exception {
         return mvn(projectFolder, Collections.EMPTY_MAP,"clean","compile");
     }
 

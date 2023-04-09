@@ -6,14 +6,15 @@ import org.jdom2.Element;
 import org.jdom2.JDOMException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zeroturnaround.exec.ProcessResult;
+
 import java.io.*;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Comparator;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 
 /**
@@ -25,7 +26,52 @@ public class MVNProjectCloner {
 
     private static Logger LOGGER = LoggerFactory.getLogger(MVNProjectCloner.class);
 
-    public static void cloneMvnProject (Path originalProjectFolder, Path clonedProjectFolder, GAV originalDependency, GAV cloneDependency, GAV clonedProjectCoordinates, Function<String,String> importTranslation) throws IOException, JDOMException {
+
+    // log files created
+    public static final String COMPILATION_LOG = ".mvn-compile.log";
+    public static final String TEST_LOG = ".mvn-test.log";
+
+    // status code
+    public static final int CLONED = 0;
+    public static final int COMPILED = 1;
+    public static final int TESTED = 2;
+
+    public static class CloneResult {
+
+        private Set<Integer> status = new HashSet<>();
+        private String[] logs = new String[3];
+
+        private void checkStatus(int s) {
+            Preconditions.checkArgument(s == CLONED || s == COMPILED || s==TESTED);
+        }
+
+        void failed(int s, String log) {
+            checkStatus(s);
+            logs[s] = log;
+        }
+
+        void success(int s) {
+            checkStatus(s);
+            status.add(s);
+        }
+
+        public boolean isCloned() {
+            return status.contains(CLONED);
+        }
+
+        public boolean isCompiled() {
+            return status.contains(COMPILED);
+        }
+
+        public boolean isTested() {
+            return status.contains(TESTED);
+        }
+
+    }
+
+    public static CloneResult cloneMvnProject (Path originalProjectFolder, Path clonedProjectFolder, GAV originalDependency, GAV cloneDependency, GAV clonedProjectCoordinates, Function<String,String> importTranslation) throws IOException, JDOMException {
+
+        CloneResult result = new CloneResult();
 
         Preconditions.checkNotNull(originalProjectFolder);
         Preconditions.checkArgument(Files.exists(originalProjectFolder));
@@ -40,18 +86,69 @@ public class MVNProjectCloner {
         LOGGER.info("Original dependency {} to be replaced found",originalDependency.asString());
 
         // copy folder recursively
-        copyMvnProject(originalProjectFolder,clonedProjectFolder);
 
-        Path clonedPom = clonedProjectFolder.resolve("pom.xml");
+        try {
+            copyMvnProject(originalProjectFolder, clonedProjectFolder);
 
-        // replace dependency and coordinates (some redundant pom parsing, but more readable)
-        POMUtils.replaceDependency(clonedPom,originalDependency,cloneDependency);
-        POMUtils.replaceCoordinates(clonedPom,clonedProjectCoordinates);
+            Path clonedPom = clonedProjectFolder.resolve("pom.xml");
 
-        // rewrite imports
-        ASTUtils.updateImports(clonedProjectFolder, importTranslation);
+            // replace dependency and coordinates (some redundant pom parsing, but more readable)
+            POMUtils.replaceDependency(clonedPom, originalDependency, cloneDependency);
+            POMUtils.replaceCoordinates(clonedPom, clonedProjectCoordinates);
 
-        // todo build maven to confirm tests
+            // rewrite imports
+            ASTUtils.updateImports(clonedProjectFolder, importTranslation);
+            result.success(CLONED);
+
+        }
+        catch (IOException x) {
+            LOGGER.error("error cloning " + clonedProjectFolder,x);
+            result.failed(CLONED,printStacktrace(x));
+        }
+
+        if (!result.isCloned()) return result;
+
+        Path logFile = clonedProjectFolder.resolve(COMPILATION_LOG);
+        try {
+            ProcessResult pr = MVNExe.mvnCleanCompile(clonedProjectFolder);
+            if (pr.getExitValue()==0) {
+                result.success(COMPILED);
+            }
+            else {
+                String out = pr.outputUTF8();
+                result.failed(COMPILED,out);
+                Files.write(logFile,List.of(out));
+            }
+        }
+        catch (Exception x) {
+            LOGGER.error("error compiling " + clonedProjectFolder,x);
+            String stacktrace = printStacktrace(x);
+            result.failed(COMPILED,stacktrace);
+            Files.write(logFile,List.of(stacktrace));
+        }
+
+        if (!result.isCompiled()) return result;
+
+        logFile = clonedProjectFolder.resolve(TEST_LOG);
+        try {
+            ProcessResult pr = MVNExe.mvnCleanCompile(clonedProjectFolder);
+            if (pr.getExitValue()==0) {
+                result.success(TESTED);
+            }
+            else {
+                String out = pr.outputUTF8();
+                result.failed(TESTED,out);
+                Files.write(logFile,List.of(out));
+            }
+        }
+        catch (Exception x) {
+            LOGGER.error("error testing " + clonedProjectFolder,x);
+            String stacktrace = printStacktrace(x);
+            result.failed(TESTED,stacktrace);
+            Files.write(logFile,List.of(stacktrace));
+        }
+
+        return result;
 
     }
 
@@ -98,6 +195,13 @@ public class MVNProjectCloner {
             }
         });
 
+    }
+
+    private static String printStacktrace(Throwable x) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        x.printStackTrace(pw);
+        return sw.toString();
     }
 
 }

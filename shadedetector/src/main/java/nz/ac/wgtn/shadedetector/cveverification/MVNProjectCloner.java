@@ -131,7 +131,7 @@ public class MVNProjectCloner {
 
         logFile = clonedProjectFolder.resolve(TEST_LOG);
         try {
-            ProcessResult pr = MVNExe.mvnCleanCompile(clonedProjectFolder);
+            ProcessResult pr = MVNExe.mvnTest(clonedProjectFolder);
             if (pr.getExitValue()==0) {
                 result.success(TESTED);
             }

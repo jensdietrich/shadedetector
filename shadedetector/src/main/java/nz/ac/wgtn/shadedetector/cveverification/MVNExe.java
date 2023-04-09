@@ -25,6 +25,10 @@ public class MVNExe {
         return mvn(projectFolder, Collections.EMPTY_MAP,"clean","test");
     }
 
+    public static ProcessResult mvnTest(Path projectFolder, String... phases) throws Exception {
+        return mvn(projectFolder, Collections.EMPTY_MAP,"test");
+    }
+
     public static ProcessResult mvnCleanCompile(Path projectFolder, Map<String,String> environmentVariables, String... phases) throws Exception {
         return mvn(projectFolder,environmentVariables,"clean","compile");
     }

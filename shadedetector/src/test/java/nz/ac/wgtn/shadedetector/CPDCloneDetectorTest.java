@@ -1,21 +1,22 @@
 package nz.ac.wgtn.shadedetector;
 
-import nz.ac.wgtn.shadedetector.clonedetection.CPDCloneDetector;
+import nz.ac.wgtn.shadedetector.clonedetection.pmd.CPDBasedCloneDetector;
 import org.junit.jupiter.api.Test;
 
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Set;
 
 public class CPDCloneDetectorTest {
 
     @Test
     public void testCPDCloneDetection() throws Exception {
-        CPDCloneDetector detector = new CPDCloneDetector();
+        CPDBasedCloneDetector detector = new CPDBasedCloneDetector();
         URL resourceUrl = getClass().getResource("/f.jar");
         Path fJarPath = Paths.get(resourceUrl.toURI());
         resourceUrl = getClass().getResource("/b.jar");
         Path bJarPath = Paths.get(resourceUrl.toURI());
-        detector.detect(fJarPath, bJarPath);
+        Set<CloneDetector.CloneRecord> detect = detector.detect(fJarPath, bJarPath);
     }
 }

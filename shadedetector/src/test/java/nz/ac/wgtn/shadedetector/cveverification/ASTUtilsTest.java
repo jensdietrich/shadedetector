@@ -1,5 +1,6 @@
 package nz.ac.wgtn.shadedetector.cveverification;
 
+import org.apache.commons.collections.map.HashedMap;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -79,12 +81,7 @@ public class ASTUtilsTest {
         Assumptions.assumeTrue(imports.size()==1);
         Assumptions.assumeTrue(imports.contains("org.yaml.snakeyaml.Yaml"));
 
-        Function<String,String> mapping = k -> {
-            if (k.equals("org.yaml.snakeyaml.Yaml")) {
-                return "com.example.Yaml";
-            }
-            else return k;
-        };
+        Map<String,String> mapping = Map.of("org.yaml.snakeyaml.Yaml","com.example.Yaml");
 
         ASTUtils.updateImports(manipulatedSRC,mapping);
 

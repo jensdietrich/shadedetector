@@ -69,7 +69,7 @@ public class MVNProjectCloner {
 
     }
 
-    public static CloneResult cloneMvnProject (Path originalProjectFolder, Path clonedProjectFolder, GAV originalDependency, GAV cloneDependency, GAV clonedProjectCoordinates, Function<String,String> importTranslation) throws IOException, JDOMException {
+    public static CloneResult cloneMvnProject (Path originalProjectFolder, Path clonedProjectFolder, GAV originalDependency, GAV cloneDependency, GAV clonedProjectCoordinates, Map<String,String> importTranslation) throws IOException, JDOMException {
 
         CloneResult result = new CloneResult();
 

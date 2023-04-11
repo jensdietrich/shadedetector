@@ -1,6 +1,7 @@
 package nz.ac.wgtn.shadedetector;
 
 import com.google.common.base.Preconditions;
+import nz.ac.wgtn.shadedetector.clonedetection.ImportTranslationExtractor;
 import nz.ac.wgtn.shadedetector.cveverification.MVNExe;
 import nz.ac.wgtn.shadedetector.cveverification.MVNProjectCloner;
 import nz.ac.wgtn.shadedetector.cveverification.POMUtils;
@@ -237,13 +238,15 @@ public class Main {
                     Path verificationProjectFolder = verificationProjectInstancesFolder.resolve(verificationProjectArtifactName);
                     LOGGER.info("\tproject folder: " + verificationProjectFolder);
 
+                    Map importTranslations = ImportTranslationExtractor.computeImportTranslations(originalSources,src,cloneAnalysesResults);
+
                     MVNProjectCloner.cloneMvnProject(
                         verificationProjectTemplateFolder,
                         verificationProjectFolder,
                         gav,
                         match.asGAV(),
                         new GAV(verificationProjectGroupName,verificationProjectArtifactName,verificationProjectVersion),
-                        name -> name  // @TODO
+                        importTranslations
                     );
                 }
 

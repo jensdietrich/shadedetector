@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -20,7 +21,7 @@ import java.util.stream.Collectors;
 
 public class ASTUtils {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(MVNProjectCloner.class);
+    private static Logger LOGGER = LoggerFactory.getLogger(ASTUtils.class);
 
     public static Predicate<ImportDeclaration> ALL = imp -> true;
     public static Predicate<ImportDeclaration> HAS_WILDCARDS = imp -> imp.isAsterisk();
@@ -49,7 +50,7 @@ public class ASTUtils {
             .get().orElseThrow(() -> new IllegalStateException("No class definition found in " + src));
     }
 
-    public static void updateImports(Path projectFolderOrJavaSource, Function<String,String> importTranslation) throws IOException {
+    public static void updateImports(Path projectFolderOrJavaSource, Map<String,String> importTranslation) throws IOException {
 
         if (Files.isDirectory(projectFolderOrJavaSource)) {
             List<Path> sources = Files.walk(projectFolderOrJavaSource)
@@ -64,7 +65,7 @@ public class ASTUtils {
                 for (int i = 0; i < imports.size(); i++) {
                     ImportDeclaration imprt = (ImportDeclaration) imports.get(i);
                     String val = imprt.getNameAsString();
-                    String newVal = importTranslation.apply(val);
+                    String newVal = importTranslation.get(val);
                     if (newVal != null && !val.equals(newVal)) {
                         imprt.setName(newVal);
                         importsHaveChanged = true;
@@ -84,7 +85,7 @@ public class ASTUtils {
             for (int i = 0; i < imports.size(); i++) {
                 ImportDeclaration imprt = (ImportDeclaration) imports.get(i);
                 String val = imprt.getNameAsString();
-                String newVal = importTranslation.apply(val);
+                String newVal = importTranslation.get(val);
                 if (newVal != null && !val.equals(newVal)) {
                     imprt.setName(newVal);
                     importsHaveChanged = true;

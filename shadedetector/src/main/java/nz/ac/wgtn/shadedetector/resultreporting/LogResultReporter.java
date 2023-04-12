@@ -27,7 +27,7 @@ public class LogResultReporter implements ResultReporter {
     }
 
     @Override
-    public void report(Artifact component, Artifact potentialClone, List<Path> potentialCloneSpources, Set<CloneDetector.CloneRecord> cloneAnalysesResults,VerificationState state) throws IOException {
+    public void report(Artifact component, Artifact potentialClone, List<Path> potentialCloneSpources, Set<CloneDetector.CloneRecord> cloneAnalysesResults,VerificationState state,boolean packagesHaveChangedInClone) throws IOException {
         for (CloneDetector.CloneRecord record:cloneAnalysesResults) {
             LOGGER.info("Potential clone");
             LOGGER.info("\tcomponent: {}", component.getId());
@@ -36,6 +36,7 @@ public class LogResultReporter implements ResultReporter {
             LOGGER.info("\tcloned-class: {}", record.getClone().toString());
             LOGGER.info("\tconfidence: {}", record.getConvidence());
             LOGGER.info("\tverification state: {}", state.name());
+            LOGGER.info("\tpackages changed: {}",packagesHaveChangedInClone);
         }
     }
 

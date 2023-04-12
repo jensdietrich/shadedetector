@@ -33,9 +33,9 @@ public class CombinedResultReporter implements ResultReporter  {
     }
 
     @Override
-    public void report(Artifact component, Artifact potentialClone, List<Path> potentialCloneSources,Set<CloneDetector.CloneRecord> cloneAnalysesResults,ResultReporter.VerificationState state) throws IOException {
+    public void report(Artifact component, Artifact potentialClone, List<Path> potentialCloneSources,Set<CloneDetector.CloneRecord> cloneAnalysesResults,ResultReporter.VerificationState state,boolean packagesHaveChangedInClone) throws IOException {
         for (ResultReporter reporter:delegates) {
-            reporter.report(component,potentialClone,potentialCloneSources,cloneAnalysesResults,state);
+            reporter.report(component,potentialClone,potentialCloneSources,cloneAnalysesResults,state,packagesHaveChangedInClone);
         }
     }
 

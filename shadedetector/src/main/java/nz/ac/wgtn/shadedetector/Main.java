@@ -237,12 +237,14 @@ public class Main {
             countMatchesAnalysed.incrementAndGet();
             LOGGER.info("analysing whether artifact {} matches",match.getId());
             ResultReporter.VerificationState state = ResultReporter.VerificationState.NONE;
-            Set<CloneDetector.CloneRecord> cloneAnalysesResults = null;
+            Set<CloneDetector.CloneRecord> cloneAnalysesResults = Set.of();
             List<Path> sources = List.of();
+            boolean packagesHaveChangedInClone = false; // indicates shading with packages being renamed
             try {
                 Path src = FetchResources.fetchSources(match);
                 sources = Utils.listJavaSources(src,true);
                 cloneAnalysesResults = cloneDetector.detect(originalSources,src);
+
 
                 // @TODO plugin arbitrary result reporters
                 LOGGER.info("Reporting results for " + match.getId());
@@ -268,11 +270,12 @@ public class Main {
                         new GAV(verificationProjectGroupName,verificationProjectArtifactName,verificationProjectVersion),
                         importTranslations
                     );
+                    packagesHaveChangedInClone = true;
 
                     if (result.isCompiled()) {
                         state = ResultReporter.VerificationState.COMPILED;
                     }
-                    else if (result.isTested()) {
+                    if (result.isTested()) { // override
                         state = ResultReporter.VerificationState.TESTED;
                     }
 
@@ -289,7 +292,7 @@ public class Main {
             }
             finally {
                 try {
-                    resultReporter.report(artifact,match,sources,cloneAnalysesResults,state);
+                    resultReporter.report(artifact,match,sources,cloneAnalysesResults,state,packagesHaveChangedInClone);
                 } catch (IOException e) {
                     LOGGER.error("error reporting",e);
                 }

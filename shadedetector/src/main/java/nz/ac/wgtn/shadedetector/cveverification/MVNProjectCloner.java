@@ -2,12 +2,10 @@ package nz.ac.wgtn.shadedetector.cveverification;
 
 import com.google.common.base.Preconditions;
 import nz.ac.wgtn.shadedetector.GAV;
-import org.jdom2.Element;
 import org.jdom2.JDOMException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeroturnaround.exec.ProcessResult;
-
 import java.io.*;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -15,7 +13,6 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
-import java.util.function.Function;
 
 /**
  * Clone a project, replace dependencies.
@@ -40,6 +37,15 @@ public class MVNProjectCloner {
 
         private Set<Integer> status = new HashSet<>();
         private String[] logs = new String[3];
+        private boolean renamedImports = false;
+
+        public boolean isRenamedImports() {
+            return renamedImports;
+        }
+
+        public void setRenamedImports(boolean renamedImports) {
+            this.renamedImports = renamedImports;
+        }
 
         private void checkStatus(int s) {
             Preconditions.checkArgument(s == CLONED || s == COMPILED || s==TESTED);
@@ -82,7 +88,7 @@ public class MVNProjectCloner {
 
         LOGGER.info("Cloning project {}",originalProjectFolder);
         LOGGER.info("checking original pom {}",originalPom);
-        Element originalDependencyElement = POMUtils.findDependency(originalPom,originalDependency); // not used, just to verify that element exists
+        // Element originalDependencyElement = POMUtils.findDependency(originalPom,originalDependency); // not used, just to verify that element exists
         LOGGER.info("Original dependency {} to be replaced found",originalDependency.asString());
 
         // copy folder recursively
@@ -97,7 +103,9 @@ public class MVNProjectCloner {
             POMUtils.replaceCoordinates(clonedPom, clonedProjectCoordinates);
 
             // rewrite imports
-            ASTUtils.updateImports(clonedProjectFolder, importTranslation);
+            boolean importsHaveChanged = ASTUtils.updateImports(clonedProjectFolder, importTranslation);
+
+            result.setRenamedImports(importsHaveChanged);
             result.success(CLONED);
 
         }

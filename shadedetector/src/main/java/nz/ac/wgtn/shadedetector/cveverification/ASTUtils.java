@@ -4,6 +4,7 @@ import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.NodeList;
+import org.apache.commons.collections.functors.PredicateTransformer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
@@ -50,8 +51,16 @@ public class ASTUtils {
             .get().orElseThrow(() -> new IllegalStateException("No class definition found in " + src));
     }
 
-    public static void updateImports(Path projectFolderOrJavaSource, Map<String,String> importTranslation) throws IOException {
+    /**
+     * Updates imports.
+     * @param projectFolderOrJavaSource
+     * @param importTranslation
+     * @return true if imports were changed, false otherwise
+     * @throws IOException
+     */
+    public static boolean updateImports(Path projectFolderOrJavaSource, Map<String,String> importTranslation) throws IOException {
 
+        boolean importsHaveChanged = false;
         if (Files.isDirectory(projectFolderOrJavaSource)) {
             List<Path> sources = Files.walk(projectFolderOrJavaSource)
                 .filter(file -> !Files.isDirectory(file))
@@ -59,7 +68,7 @@ public class ASTUtils {
                 .collect(Collectors.toList());
 
             for (Path src : sources) {
-                boolean importsHaveChanged = false;
+                boolean importsHaveChanged2 = false;
                 CompilationUnit cu = StaticJavaParser.parse(src);
                 NodeList imports = cu.getImports();
                 for (int i = 0; i < imports.size(); i++) {
@@ -68,18 +77,18 @@ public class ASTUtils {
                     String newVal = importTranslation.get(val);
                     if (newVal != null && !val.equals(newVal)) {
                         imprt.setName(newVal);
+                        importsHaveChanged2 = true;
                         importsHaveChanged = true;
                     }
                 }
 
-                if (importsHaveChanged) {
+                if (importsHaveChanged2) {
                     LOGGER.info("writing java sources with updated imports");
                     Files.writeString(src, cu.toString());
                 }
             }
         }
         else {
-            boolean importsHaveChanged = false;
             CompilationUnit cu = StaticJavaParser.parse(projectFolderOrJavaSource);
             NodeList imports = cu.getImports();
             for (int i = 0; i < imports.size(); i++) {
@@ -97,5 +106,8 @@ public class ASTUtils {
                 Files.writeString(projectFolderOrJavaSource, cu.toString());
             }
         }
+        return importsHaveChanged;
     }
+
+
 }

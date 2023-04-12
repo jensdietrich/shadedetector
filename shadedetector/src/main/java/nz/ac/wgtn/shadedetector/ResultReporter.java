@@ -14,7 +14,7 @@ public interface ResultReporter extends NamedService {
 
     enum VerificationState {NONE, COMPILED, TESTED};
 
-    void report (Artifact component, Artifact potentialClone, List<Path> potentialCloneSources, Set<CloneDetector.CloneRecord> cloneAnalysesResults, VerificationState verificationState) throws IOException;
+    void report (Artifact component, Artifact potentialClone, List<Path> potentialCloneSources, Set<CloneDetector.CloneRecord> cloneAnalysesResults, VerificationState verificationState, boolean packagesHaveChangedInClone) throws IOException;
 
     void startReporting (Artifact component, Path sources) throws IOException;
     void endReporting (Artifact component) throws IOException;

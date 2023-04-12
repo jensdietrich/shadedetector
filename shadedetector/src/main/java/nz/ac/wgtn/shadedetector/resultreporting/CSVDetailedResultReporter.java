@@ -30,7 +30,8 @@ public class CSVDetailedResultReporter implements ResultReporter {
         "original-classfile",
         "clones-classfile",
         "similarity score",
-        "verification-project-state"
+        "verification-project-state",
+        "packages names changed"
     };
 
     // the destination folder, a separate file will be created for each artifact
@@ -58,13 +59,13 @@ public class CSVDetailedResultReporter implements ResultReporter {
     }
 
     @Override
-    public void report(Artifact component, Artifact potentialClone, List<Path> potentialCloneSources, Set<CloneDetector.CloneRecord> cloneAnalysesResults,ResultReporter.VerificationState state) throws IOException {
+    public void report(Artifact component, Artifact potentialClone, List<Path> potentialCloneSources, Set<CloneDetector.CloneRecord> cloneAnalysesResults,ResultReporter.VerificationState state,boolean packagesHaveChangedInClone) throws IOException {
         String header = Stream.of(COLUMNS).collect(Collectors.joining(SEP));
         List<String> rows = new ArrayList<>();
         rows.add(header);
 
         for (CloneDetector.CloneRecord record:cloneAnalysesResults) {
-            String row = "" + component.getId() + SEP + potentialClone.getId() + SEP + record.getOriginal() + SEP + record.getClone() + SEP + record.getConvidence() + SEP + state.name();
+            String row = "" + component.getId() + SEP + potentialClone.getId() + SEP + record.getOriginal() + SEP + record.getClone() + SEP + record.getConvidence() + SEP + state.name() + SEP + packagesHaveChangedInClone;
             rows.add(row);
         }
 

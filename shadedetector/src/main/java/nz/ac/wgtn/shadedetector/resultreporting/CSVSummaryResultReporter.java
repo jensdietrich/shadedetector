@@ -42,7 +42,9 @@ public class CSVSummaryResultReporter implements ResultReporter {
         "conf-(0.2-0.3]",
         "conf-(0.1-0.2]",
         "conf-(0.0-0.1]",
-        "conf-0.0"
+        "conf-0.0",
+        "verification-compiled",
+        "verification-tested"
     };
 
     private String file = "summary.csv";
@@ -68,7 +70,7 @@ public class CSVSummaryResultReporter implements ResultReporter {
     }
 
     @Override
-    public void report(Artifact component, Artifact potentialClone, List<Path> potentialCloneSources, Set<CloneDetector.CloneRecord> cloneAnalysesResults) throws IOException {
+    public void report(Artifact component, Artifact potentialClone, List<Path> potentialCloneSources, Set<CloneDetector.CloneRecord> cloneAnalysesResults,ResultReporter.VerificationState state) throws IOException {
 
         String row = "";
         row = row + component.getId() + SEP;
@@ -89,7 +91,9 @@ public class CSVSummaryResultReporter implements ResultReporter {
         row = row + count(cloneAnalysesResults, c -> c>0.2 && c<=0.3) + SEP;
         row = row + count(cloneAnalysesResults, c -> c>0.1 && c<=0.2) + SEP;
         row = row + count(cloneAnalysesResults, c -> c>0.0 && c<=0.1) + SEP;
-        row = row + count(cloneAnalysesResults, c -> c==0.0);
+        row = row + count(cloneAnalysesResults, c -> c==0.0) + SEP;
+        row = row + (state==VerificationState.COMPILED?1:0) + SEP;
+        row = row + (state==VerificationState.TESTED?1:0) ;
 
         Files.write(new File(file).toPath(),List.of(row), StandardOpenOption.APPEND);
 

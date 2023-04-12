@@ -236,13 +236,17 @@ public class Main {
         for (Artifact match:candidates) {
             countMatchesAnalysed.incrementAndGet();
             LOGGER.info("analysing whether artifact {} matches",match.getId());
+            ResultReporter.VerificationState state = ResultReporter.VerificationState.NONE;
+            Set<CloneDetector.CloneRecord> cloneAnalysesResults = null;
+            List<Path> sources = List.of();
             try {
                 Path src = FetchResources.fetchSources(match);
-                Set<CloneDetector.CloneRecord> cloneAnalysesResults = cloneDetector.detect(originalSources,src);
+                sources = Utils.listJavaSources(src,true);
+                cloneAnalysesResults = cloneDetector.detect(originalSources,src);
 
                 // @TODO plugin arbitrary result reporters
                 LOGGER.info("Reporting results for " + match.getId());
-                resultReporter.report(artifact,match,Utils.listJavaSources(src,true),cloneAnalysesResults);
+
 
                 // TODO abstract threshold
                 if (cloneAnalysesResults.size()>10) {
@@ -265,6 +269,13 @@ public class Main {
                         importTranslations
                     );
 
+                    if (result.isCompiled()) {
+                        state = ResultReporter.VerificationState.COMPILED;
+                    }
+                    else if (result.isTested()) {
+                        state = ResultReporter.VerificationState.TESTED;
+                    }
+
                     if (result.isTested()) {
                         Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(verificationProjectArtifactName);
                         LOGGER.info("\tmoving verified project folder from {} to {}",verificationProjectFolderStaged,verificationProjectFolderFinal);
@@ -275,6 +286,13 @@ public class Main {
             } catch (Exception e) {
                 LOGGER.error("cannot fetch sources for artifact {}",match.toString(),e);
                 countMatchesAnalysedFailed.incrementAndGet();
+            }
+            finally {
+                try {
+                    resultReporter.report(artifact,match,sources,cloneAnalysesResults,state);
+                } catch (IOException e) {
+                    LOGGER.error("error reporting",e);
+                }
             }
         }
 

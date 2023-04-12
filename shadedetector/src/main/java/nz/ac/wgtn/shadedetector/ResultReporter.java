@@ -12,7 +12,9 @@ import java.util.Set;
  */
 public interface ResultReporter extends NamedService {
 
-    void report (Artifact component, Artifact potentialClone, List<Path> potentialCloneSources, Set<CloneDetector.CloneRecord> cloneAnalysesResults) throws IOException;
+    enum VerificationState {NONE, COMPILED, TESTED};
+
+    void report (Artifact component, Artifact potentialClone, List<Path> potentialCloneSources, Set<CloneDetector.CloneRecord> cloneAnalysesResults, VerificationState verificationState) throws IOException;
 
     void startReporting (Artifact component, Path sources) throws IOException;
     void endReporting (Artifact component) throws IOException;

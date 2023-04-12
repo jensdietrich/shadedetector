@@ -152,8 +152,24 @@ public class MVNProjectCloner {
 
     }
 
+    static Set<Path> getMvnFoldersNotToCopyOrMove(Path folder) {
+        return Set.of(
+            folder.resolve("target"),
+            folder.resolve(".idea"),
+            folder.resolve("scan-results"),
+            folder.resolve(".git")
+        );
+    }
 
-    static void copyMvnProject(Path originalProjectFolder, Path clonedProjectFolder) throws IOException {
+    public static void moveMvnProject(Path originalProjectFolder, Path clonedProjectFolder) throws IOException {
+        copyMvnProject(originalProjectFolder,clonedProjectFolder);
+        Files.walk(originalProjectFolder)
+            .sorted(Comparator.reverseOrder())
+            .map(Path::toFile)
+            .forEach(File::delete);
+    }
+
+    public static void copyMvnProject(Path originalProjectFolder, Path clonedProjectFolder) throws IOException {
 
 //        Files.delete(clonedProjectFolder);
         if (!Files.exists(clonedProjectFolder)) {
@@ -168,12 +184,7 @@ public class MVNProjectCloner {
 
         Files.walkFileTree(originalProjectFolder, new SimpleFileVisitor<Path>() {
 
-            final Set<Path> skipCopyFolders = Set.of(
-                originalProjectFolder.resolve("target"),
-                originalProjectFolder.resolve(".idea"),
-                originalProjectFolder.resolve("scan-results"),
-                originalProjectFolder.resolve(".git")
-            );
+            Set<Path> skipCopyFolders = getMvnFoldersNotToCopyOrMove(originalProjectFolder);
 
             @Override
             public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
@@ -194,7 +205,6 @@ public class MVNProjectCloner {
                 return FileVisitResult.CONTINUE;
             }
         });
-
     }
 
     private static String printStacktrace(Throwable x) {

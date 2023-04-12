@@ -53,7 +53,8 @@ public class Main {
         options.addOption("r","resultconsolidation",true,"the query result consolidation strategy to be used (optional, default is \"" + CONSOLIDATION_STRATEGY_FACTORY.getDefault().name() + "\")");
 
         options.addOption("vul","vulnerabilitydemo",true,"a folder containing a Maven project that verifies a vulnerability in the original library with test(s), and can be used as a template to verify the presence of the vulnerability in a clone");
-        options.addOption("vo","vulnerabilityoutput",true,"the root folder where for each clone, a project verifying the presence of a vulnerability is created");
+        options.addOption("vos","vulnerabilityoutput_staging",true,"the root folder where for each clone, a project verifying the presence of a vulnerability is created");
+        options.addOption("vov","vulnerabilityoutput_final",true,"the root folder where for each clone, a project created in the staging folder will be moved to if verification succeeds (i.e. if the vulnerability is shown to be present)");
         options.addOption("vg","vulnerabilitygroup",true,"the group name used in the projects generated to verify the presence of a vulnerability (default is \"" + DEFAULT_GENERATED_VERIFICATION_PROJECT_GROUP_NAME + "\")");
         options.addOption("vv","vulnerabilityversion",true,"the version used in the projects generated to verify the presence of a vulnerability (default is \"" + DEFAULT_GENERATED_VERIFICATION_PROJECT_VERSION + "\")");
 
@@ -189,19 +190,34 @@ public class Main {
                 LOGGER.error("vulnerability verification project is valid");
             }
         }
-        Path verificationProjectInstancesFolder = null;
-        if (cmd.hasOption("vulnerabilityoutput")) {
-            verificationProjectInstancesFolder = Path.of(cmd.getOptionValue("vulnerabilityoutput"));
-            if (!Files.exists(verificationProjectInstancesFolder)) {
+        Path verificationProjectInstancesFolderStaging = null;
+        if (cmd.hasOption("vulnerabilityoutput_staging")) {
+            verificationProjectInstancesFolderStaging = Path.of(cmd.getOptionValue("vulnerabilityoutput_staging"));
+            if (!Files.exists(verificationProjectInstancesFolderStaging)) {
                 try {
-                    Files.createDirectories(verificationProjectInstancesFolder);
+                    Files.createDirectories(verificationProjectInstancesFolderStaging);
                 } catch (IOException e) {
-                    throw new RuntimeException("cannot create folder " + verificationProjectInstancesFolder,e);
+                    throw new RuntimeException("cannot create folder " + verificationProjectInstancesFolderStaging,e);
                 }
             }
         }
-        LOGGER.info("verification projects will be created in {}",verificationProjectInstancesFolder);
-        assert verificationProjectInstancesFolder!=null;
+        LOGGER.info("verification projects will be created in {}",verificationProjectInstancesFolderStaging);
+        assert verificationProjectInstancesFolderStaging!=null;
+
+        Path verificationProjectInstancesFolderFinal = null;
+        if (cmd.hasOption("vulnerabilityoutput_final")) {
+            verificationProjectInstancesFolderFinal = Path.of(cmd.getOptionValue("vulnerabilityoutput_final"));
+            if (!Files.exists(verificationProjectInstancesFolderFinal)) {
+                try {
+                    Files.createDirectories(verificationProjectInstancesFolderFinal);
+                } catch (IOException e) {
+                    throw new RuntimeException("cannot create folder " + verificationProjectInstancesFolderFinal,e);
+                }
+            }
+        }
+        LOGGER.info("verified projects will be moved from {} to {}",verificationProjectInstancesFolderStaging,verificationProjectInstancesFolderFinal);
+        assert verificationProjectInstancesFolderFinal!=null;
+
 
         String verificationProjectGroupName = DEFAULT_GENERATED_VERIFICATION_PROJECT_GROUP_NAME;
         if (cmd.hasOption("vulnerabilitygroup")) {
@@ -235,19 +251,25 @@ public class Main {
                     LOGGER.info("\tgroupId: " + verificationProjectGroupName);
                     LOGGER.info("\tartifactId: " + verificationProjectArtifactName);
                     LOGGER.info("\tversion: " + verificationProjectVersion);
-                    Path verificationProjectFolder = verificationProjectInstancesFolder.resolve(verificationProjectArtifactName);
-                    LOGGER.info("\tproject folder: " + verificationProjectFolder);
+                    Path verificationProjectFolderStaged = verificationProjectInstancesFolderStaging.resolve(verificationProjectArtifactName);
+                    LOGGER.info("\tproject folder: " + verificationProjectFolderStaged);
 
                     Map importTranslations = ImportTranslationExtractor.computeImportTranslations(originalSources,src,cloneAnalysesResults);
 
-                    MVNProjectCloner.cloneMvnProject(
+                    MVNProjectCloner.CloneResult result = MVNProjectCloner.cloneMvnProject(
                         verificationProjectTemplateFolder,
-                        verificationProjectFolder,
+                        verificationProjectFolderStaged,
                         gav,
                         match.asGAV(),
                         new GAV(verificationProjectGroupName,verificationProjectArtifactName,verificationProjectVersion),
                         importTranslations
                     );
+
+                    if (result.isTested()) {
+                        Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(verificationProjectArtifactName);
+                        LOGGER.info("\tmoving verified project folder from {} to {}",verificationProjectFolderStaged,verificationProjectFolderFinal);
+                        MVNProjectCloner.moveMvnProject(verificationProjectFolderStaged,verificationProjectFolderFinal);
+                    }
                 }
 
             } catch (Exception e) {

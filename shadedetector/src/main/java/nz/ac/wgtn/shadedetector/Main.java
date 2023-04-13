@@ -13,8 +13,7 @@ import org.zeroturnaround.exec.ProcessResult;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -316,6 +315,21 @@ public class Main {
                     LOGGER.error("error reporting",e);
                 }
             }
+        }
+
+
+        // if verificationProjectInstancesFolderFinal exists, copy sh scripts to run sca tools
+        Path resources = Path.of(Main.class.getResource("/").getPath());
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(resources)) {
+            for (Path path : stream) {
+                if (!Files.isDirectory(path) && path.toString().endsWith(".sh")) {
+                    Path dest = verificationProjectInstancesFolderFinal.resolve(path.getName(path.getNameCount()-1));
+                    Files.copy(path,dest, StandardCopyOption.REPLACE_EXISTING);
+                    LOGGER.info("copied SCA script from {} to {}",path,dest);
+                }
+            }
+        } catch (IOException e) {
+            LOGGER.error("error collecting and copying sca scripts",e);
         }
 
         try {

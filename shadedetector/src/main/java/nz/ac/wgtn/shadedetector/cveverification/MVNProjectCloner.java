@@ -7,10 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeroturnaround.exec.ProcessResult;
 import java.io.*;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 
@@ -208,7 +205,7 @@ public class MVNProjectCloner {
             @Override
             public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
                 if (Files.isRegularFile(file) && !Files.isHidden(file)) {
-                    Files.copy(file, clonedProjectFolder.resolve(originalProjectFolder.relativize(file)));
+                    Files.copy(file, clonedProjectFolder.resolve(originalProjectFolder.relativize(file)), StandardCopyOption.REPLACE_EXISTING);
                 }
                 return FileVisitResult.CONTINUE;
             }

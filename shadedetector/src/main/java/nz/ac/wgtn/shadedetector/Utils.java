@@ -238,4 +238,11 @@ public class Utils {
             return false;
         }
     }
+
+    public static String printStacktrace(Throwable x) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        x.printStackTrace(pw);
+        return sw.toString();
+    }
 }

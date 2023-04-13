@@ -11,6 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeroturnaround.exec.ProcessResult;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -26,6 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Main {
 
     private static Logger LOGGER = LoggerFactory.getLogger(Main.class);
+    public static final String TEST_LOG = ".mvn-test.log";
 
     private static ClassSelectorFactory CLASS_SELECTOR_FACTORY = new ClassSelectorFactory();
     private static CloneDetectorFactory CLONE_DETECTOR_FACTORY = new CloneDetectorFactory();
@@ -245,10 +248,7 @@ public class Main {
                 sources = Utils.listJavaSources(src,true);
                 cloneAnalysesResults = cloneDetector.detect(originalSources,src);
 
-
-                // @TODO plugin arbitrary result reporters
                 LOGGER.info("Reporting results for " + match.getId());
-
 
                 // TODO abstract threshold
                 if (cloneAnalysesResults.size()>10) {
@@ -283,6 +283,25 @@ public class Main {
                         Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(verificationProjectArtifactName);
                         LOGGER.info("\tmoving verified project folder from {} to {}",verificationProjectFolderStaged,verificationProjectFolderFinal);
                         MVNProjectCloner.moveMvnProject(verificationProjectFolderStaged,verificationProjectFolderFinal);
+
+                        // re-test to create surefire reports
+                        LOGGER.error("running build test on final project {}",verificationProjectFolderFinal);
+                        Path buildLog = verificationProjectFolderFinal.resolve(TEST_LOG);
+                        try {
+                            ProcessResult pr = MVNExe.mvnTest(verificationProjectFolderFinal);
+                            String out = pr.outputUTF8();
+                            Files.write(buildLog,List.of(out));
+
+                            if (pr.getExitValue()!=0) {
+                                LOGGER.error("error testing final project {}",verificationProjectFolderFinal);
+                            }
+                        }
+                        catch (Exception x) {
+                            LOGGER.error("error testing final project {}",verificationProjectFolderFinal,x);
+                            String stacktrace = Utils.printStacktrace(x);
+                            Files.write(buildLog,List.of(stacktrace));
+                        }
+
                     }
                 }
 
@@ -305,9 +324,8 @@ public class Main {
         catch (IOException x) {
             LOGGER.error("error finishing result reporting",x);
         }
-
-
     }
+
 
     // check the vulnerability verification project (template)
     private static void checkVerificationProject(Path verificationProjectTemplateFolder) throws Exception {

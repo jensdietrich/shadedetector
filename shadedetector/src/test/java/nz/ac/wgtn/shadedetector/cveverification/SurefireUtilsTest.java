@@ -16,7 +16,7 @@ public class SurefireUtilsTest {
 
     @Test
     public void test1() throws IOException, JDOMException {
-        Path path = getFile("/surefire/Test-1.xml");
+        Path path = getFile("/surefire/TEST-1.xml");
         SurefireUtils.TestResults results = SurefireUtils.parseSurefireReport(path);
         assertEquals(2,results.getTestCount());
         assertEquals(0,results.getFailureCount());
@@ -28,7 +28,7 @@ public class SurefireUtilsTest {
 
     @Test
     public void test2() throws IOException, JDOMException {
-        Path path = getFile("/surefire/Test-2.xml");
+        Path path = getFile("/surefire/TEST-2.xml");
         SurefireUtils.TestResults results = SurefireUtils.parseSurefireReport(path);
         assertEquals(2,results.getTestCount());
         assertEquals(0,results.getFailureCount());
@@ -40,7 +40,7 @@ public class SurefireUtilsTest {
 
     @Test
     public void test3() throws IOException, JDOMException {
-        Path path = getFile("/surefire/Test-3.xml");
+        Path path = getFile("/surefire/TEST-3.xml");
         SurefireUtils.TestResults results = SurefireUtils.parseSurefireReport(path);
         assertEquals(2,results.getTestCount());
         assertEquals(1,results.getFailureCount());
@@ -52,7 +52,7 @@ public class SurefireUtilsTest {
 
     @Test
     public void test4() throws IOException, JDOMException {
-        Path path = getFile("/surefire/Test-4.xml");
+        Path path = getFile("/surefire/TEST-4.xml");
         SurefireUtils.TestResults results = SurefireUtils.parseSurefireReport(path);
         assertEquals(2,results.getTestCount());
         assertEquals(0,results.getFailureCount());
@@ -64,7 +64,7 @@ public class SurefireUtilsTest {
 
     @Test
     public void test5() throws IOException, JDOMException {
-        Path path = getFile("/surefire/Test-5.xml");
+        Path path = getFile("/surefire/TEST-5.xml");
         SurefireUtils.TestResults results = SurefireUtils.parseSurefireReport(path);
         assertEquals(2,results.getTestCount());
         assertEquals(1,results.getFailureCount());
@@ -77,8 +77,8 @@ public class SurefireUtilsTest {
 
     @Test
     public void testMerge1() throws IOException, JDOMException {
-        Path path1 = getFile("/surefire/Test-1.xml");
-        Path path2 = getFile("/surefire/Test-2.xml");
+        Path path1 = getFile("/surefire/TEST-1.xml");
+        Path path2 = getFile("/surefire/TEST-2.xml");
         SurefireUtils.TestResults results1 = SurefireUtils.parseSurefireReport(path1);
         SurefireUtils.TestResults results2 = SurefireUtils.parseSurefireReport(path2);
         SurefireUtils.TestResults results = SurefireUtils.merge(List.of(results1,results2));

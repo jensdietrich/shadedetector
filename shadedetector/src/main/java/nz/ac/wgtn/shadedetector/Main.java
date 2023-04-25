@@ -319,7 +319,8 @@ public class Main {
 
 
         // if verificationProjectInstancesFolderFinal exists, copy sh scripts to run sca tools
-        Path resources = Path.of(Main.class.getResource("/").getPath());
+        // sca directory expected under project root (CWD)
+        Path resources = Path.of("sca");
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(resources)) {
             for (Path path : stream) {
                 if (!Files.isDirectory(path) && path.toString().endsWith(".sh")) {

@@ -2,46 +2,64 @@
 
 \usepackage{url}
 \usepackage{todonotes}
+\usepackage{hyperref}
 
 
 \begin{document}
 
 
-\title{Dependency Shading in the Maven Ecosystem}
+\title{An Analysis of the Security Blind Spots of Software Composition Analysis caused By Cloning and Shading }
 
 
 \maketitle
 
 \abstract{
-Modern software heavily relies on the use of components. Those components are usually published  in central repositories, and managed by build systems via dependencies. Due to issues around vulnerabilities, licenses and the propagation of bugs, the study of those dependencies is of upmost importance, and new software composition analysis tools have emerged to deal with those challenges. 
+Modern software heavily relies on the use of components. Those components are usually published  in central repositories, and managed by build systems via dependencies. Due to issues around vulnerabilities, licenses and the propagation of bugs, the study of those dependencies is of upmost importance, and various software composition analysis tools have emerged to deal with those challenges. 
 
-A particular challenge those tools phase is obfuscated dependencies that are the result of shading where code from a component is "inlined" into a client, and often moved into a different namespace. 
+A particular challenge those tools phase is obfuscated dependencies that are the result of cloning or shading where code from a component is "inlined" into a client, and sometimes moved into a different namespace. 
 
-We study the practice of shading, and how prevalent this is in the Maven ecosystem used by Java and other JVM languages (Kotlin, Scala, etc). We also present tooling to detect shaded dependencies. 
+We study the practice of shading, and how prevalent this is in the Maven ecosystem used by Java and other JVM languages (Kotlin, Scala, etc). We also present a tool pipeline to detected cloned and shaded artifacts in the Maven repository.  Our tool is lightweight in that it does not requires the creation and maintenance of an index, and uses a custom AST-based clone detection.  
+
+We evaluates this by detecting the presence of known vulnerabilities with assigned CVEs in artifacts not flagged by mainstream SCA tools. Starting with TODO known CVEs and proof-of-concept projects demonstrating the presence of the respective vulnerabilities  in the respective artifacts, we query the Maven repository for XX potential clones, and detect TODO other artifacts with those vulnerabilities. Our analysis is precise by design.
 
 }
 
-\section{Introduction}
+\section{Introduction and Motivation}
 
 
-Modern software systems often use components to obtain economy of scale. The process is recursive -- components also use other components, resulting in deep and complex component ecosystems. This has in turn created new challenges. The prime example is vulnerability propagation, infamous examples include the \textit{equifax}~\cite{CVE-2017-5638,luszcz2018apache} and \textit{log4shell}~\cite{CVE-2021-44228,hiesgen2022race} incidents, with vulnerable and oudated components now being acknowledged as being a major security risk~\cite{owaspTop10A06}. 
+Modern software systems often use components to obtain economy of scale. The process is recursive -- components also use other components, resulting in deep and complex component ecosystems. This has in turn created new challenges. The prime example is vulnerability propagation, infamous examples include the \textit{equifax}~\cite{CVE-2017-5638,luszcz2018apache} and \textit{log4shell}~\cite{CVE-2021-44228,hiesgen2022race} incidents, with vulnerable and oudated components now being acknowledged as being a major security risk~\cite{owaspTop10A06}. Other related issues include license compliance TODO, breaking uodates, typo-squatting TODO, and lifecycle issues of dependency components as demonstrated by the infamous leftpad incident TODO.
 
-In response to those challenges, software composition analysis (SCA)  tools have emerged that scan the dependency networks, and cross-reference them with known vulnerabilities, in particular, the common vulnerability and exposure (CVE) database. If a vulnerable dependency is found, developers are notified (usually via pull requests) and can upgrade dependencies to a newer version. This is also beneficial for other reasons resulting from maintenance, such as bug fixes. Examples of such tools include GitHub's \textit{dependabot}~\footnote{\url{https://github.com/dependabot}}, \textit{snyk}~\footnote{\url{https://snyk.io/}},
-\textit{OWASP dependency check}~\footnote{\url{https://owasp.org/www-project-dependency-check/}},  tooling integrated into development environments such as \textit{IntelliJ's dependency analysis},  and features or plugins for build tools like \textit{npm audit} (for JavaScript) and sonatype's \textit{oss index} Maven plugin~\footnote{\url{https://sonatype.github.io/ossindex-maven/maven-plugin/}}.
+In response to those challenges, software composition analysis (SCA)  tools have emerged that scan the dependency networks, and cross-reference them with known vulnerabilities, in particular, the common vulnerability and exposure (CVE) database. If a vulnerable dependency is found, developers are notified (usually via pull requests) and can upgrade dependencies to a newer version.  Examples of such tools include GitHub's \textit{dependabot}~\footnote{\url{https://github.com/dependabot}}, \textit{snyk}~\footnote{\url{https://snyk.io/}},
+\textit{OWASP dependency check}~\footnote{\url{https://owasp.org/www-project-dependency-check/}},  tooling integrated into development environments such as \textit{IntelliJ's dependency analysis backed by \textit{checkmarx}},  and features or plugins for build tools like \textit{npm audit} (for JavaScript) and sonatype's \textit{oss index} Maven plugin~\footnote{\url{https://sonatype.github.io/ossindex-maven/maven-plugin/}}.
  
- Those are static analysis tools, mainly based on the project metadata - declarations of dependencies in build configurations files. Like all such tools they suffer from precision problems, i.e. false positives. They may for instance detect dependencies to vulnerable code in a  library that is not actually reachable. This could in principle be tackled by building more fine-grained analyses, although the price (in terms of computational resources needed) is significant. 
+ Those are lightweight static analysis tools based on the project metadata - declarations of dependencies in build configurations files. Like all such tools they suffer from precision problems, i.e. false positives. They may for instance detect dependencies to vulnerable code in a  library that is not actually reachable. This could in principle be tackled by building more fine-grained analyses, although the price (in terms of computational resources needed) is significant. 
+ 
+ \todo[inline] {there was a recent paper here., could also refer to Heiderup's more precise callgraph, could also discuss that sometimes there mere precense of a class is sufficient to trigger the vulnerability}
  
 What is more  relevant for our discussion  is that those analyses are not sound either, but merely \textit{soundy}~\cite{livshits2015defense}. I.e. those tools are sound only under certain assumptions, but there are known circumstances when those analyses produce false negatives, i.e., they miss dependencies and therefore problems such as vulnerabilities associated with those dependencies.
  
- The first such pattern is late binding, i.e. applications that "discover" capabilities at runtime, leading to dependencies that are not visible in the build configurations or code SCA tools analyse.  For Java, plugin-based application frameworks like \textit{OSGi} widely used in application servers and programming tools (Eclipse) facilitate this.  
+ The first such pattern is late binding, i.e. applications that "discover" capabilities at runtime, leading to dependencies that are not visible in the build configurations or code SCA tools analyse.  For Java, plugin-based application frameworks like \textit{OSGi} widely used in application servers and programming tools (Eclipse) facilitate this.  This is outside the scope of our study. 
  
- A second cause of unsoundness is \textit{dependency shading}.  With shading, packages of Java code are inlined into an application, i.e. included in the library or application (usually a \textit{jar} file) being build. One reason to do this is to build a far jar or super jar, i.e. the application is packaged in a format that facilitates deployment by including all dependencies, therefore not requiring the tedious configuration of classpaths. For this use case, packages retain their packages (name spaces). Shading occurs when the package names are changed, therefore obfuscating the origin of the code being shaded. The main use case to do this is to avoid conflicts that occur if two versions of the same class (identified by the fully qualified name that includes the package name) occur in the classpath~\cite{wang2018dependency}. Unless complex frameworks are used to mitigate this using class loaders (such as OSGi), this results in unpredictable behaviour, sometimes referred to as classpath hell in reference to the DLL hell that plagued Windows software for many year. 
  
- Renaming packages is not a trivial task and references must be updated, the this requires an analysis that may itself be unsound, for instance, if reflective references to code to be shaded exist~\cite{sui2020recall}. For this reason, build plugins have emerged to facilitate shading. The prime example of such a plugin is the \textit{maven-shade-plugin}~\footnote{\url{https://maven.apache.org/plugins/maven-shade-plugin/}}. In particular, the plugin allows users to define relocations by specifying source and target packages. This make the process of shading accessible to developers.  
+ A second cause of unsoundness is \textit{cloning}. With cloning, code is copied into the project, and these copies can carry vulnerabilities which are then obfuscated bv the process. Cloning can take place of multiple levels, from code snippets, functions, classes to entire components.  Code sharing and discussion web sites like \textit{stackoverflow}, online tutorials like \textit{baeldung} and more lately AI-based tools like \textit{CodePilot} promote cloning.  With cloning, basic engineering principles like \textit{DRY (do not repeat yourself)} are violated, and in the long term the ()lack of) maintenance of cloned code is highly problematic. 
  
- We refer to this as \textit{guided shading}, i.e. shading that is supported by a build tool that performs some analysis (although unsound, as discussed above). In contrast, \textit{ad-hoc shading} refers to shading where developers copy code (usually source code) into a project.  In terms of SCA, guided shading is somehow more benign as the original dependencies contain the code that is being shaded are still visible for tools.  
+ However, there are also advantages to cloning, and cloning may even be used in order to make code more secure and reliable. For instance, if a dependency is only used for the purpose of using  a rather small and trivial piece of functionality from an otherwise large component (perhaps with additional dependencies), then cloning can be a sensible strategy as it may reduce the size of a product to be deployed, and may greatly reduce its attack surface by removing now redundant functionalities. 
  
-It is also possible and often sensible not to shade an entire library, but only the parts needed. This can reduce the size of packages build, and reduce exposure to vulnerabilities. We refer to this practice as \textit{partial shading}. 
+ For Java, there is an additional problem, a descendent of the infamous DLL hell. Large dependency networks may lead to conflicts between different versions of the same class added via multiple dependency paths. Often, the problems resulting from this only manifest at runtime when classes are loaded and linkage related errors caused by binary incompatibility occur. API changes causing this problem are common TODO,  purely understood by developers TODO, and therefore expensive for projects. 
+ 
+ A common solution for this problem is \textit{shading} -- a variant of cloning where entire packages are cloned and renamed. Even the standard libraries provided with the JDK use shading, for instance, TODO. 
+ 
+ The Java / Maven community acknowledges this issue by provisioning tools like the Maven shade plugin. Here, shading is automated and performed during the build. The dependency to be shaded and the package to be renamed are declared in the build file, and therefore rename visible to SCA tools. We refer to this as \textit{buildtime shading} (\textit{b-shading} for short). 
+ 
+ There are cases however where other approaches to shading are used - we will provide plenty of examples later in the evaluation section. Here, shading is done by means of refactoring and code organisation tools like IDEs, we therefore refer to this as \textit{designtime shading (d-shading)}. One obvious reason that this happens is lack of understanding by engineers.  However, there might also be a more sophisticated motivation to use d-shading. Tools like the shading plugin are static analysis tools, and as such can at best be expected to be \textit{soundy} TODO. The prevelance of dynamic language features in Java is a known challenge for static analysis tools, and leads to a considerable amount of false negatives. In particular , tools like the shade plugin have to rewrite the bytecode of the code to be shaded, and change references (supertypes, method and field descriptors, etc) to the new package names. If such references are missed due to reflective references being present, builds will fail. In this case, d-shading is the better option. 
+ 
+ However, d-shading result in blind spots for tools that exclusively rely on declared dependencies to infer the presence of vulnerabilities, and other issues. The question arises whether shading not using this techniques is common, and in particular, whether this poses a security risk. This is the question we set out to study.  
+ 
+ 
+ \todo[inline] {The following can move down }
+ Our notion if d-shading is pragmatic -- we do not study projects for traces that the respective source code manipulations took place. We do  analyse Maven build scripts for the use of the shade plugin and any other references (in particular, dependencies) to the artifacts we are interested in, and if we find any such references, we assume that b-shading had been used.  Any other occurrences of shaded artifacts are considered to be the result of s-shading. This likely over-approximates this somehow, as this may includes cases where some build tool we do not analyse has been used. But more importantly, we check that our notion is consistent with existing SCA tools. I.e., our notion of s-shading is equivalent to "not found by the mainstream SCA tools we have studied". 
+ 
+ 
  
 \todo[inline] {need to discuss the gradle equivalent for shading somewhere}
  
@@ -52,19 +70,13 @@ It is also possible and often sensible not to shade an entire library, but only 
 
 \subsection{Research Questions}
 
+
 \begin{enumerate}
-	\item[RQ1]  How prevalent is shading in the Maven ecosystem ?  
-	\item[RQ2] How is shading done ?
-	\begin{enumerate}
-		\item[RQ2a] How prevalent is ad-hoc shading ?
-		\item[RQ2b] How common is relocation ?
-		\item[RQ2c] How common is partial shading ?
-	\end{enumerate}
-	\item[RQ3] Which libraries are commonly being shaded ? 
-	\item[RQ4] What are the reasons to use shading ?
-	\item[RQ5] What are the limitations of current tools with respect to shading ?
-	\item[RQ6] Can shaded dependencies be efficiently detected ? 
+	\item[RQ1]  Are there artifacts deployed in the Maven repository which clone or shade artifacts with known vulnerabilities, but SCA tools fail to detect these vulnerabilities. 
+	\item[RQ2] Can those vulnerabilities that result from cloning and shading artifacts be detected ?
 \end{enumerate}
+
+
 
 
 \todo[inline] {Emanuel did some experiments for RQ5 using dependabot, synk, owasp and IntelliJ’s Dependency Analysis -- this is not in the final report, we can tidy this up / redo this easily}
@@ -73,11 +85,132 @@ It is also possible and often sensible not to shade an entire library, but only 
 
 
 
-\section{Dataset Acquisition}
 
 
+
+\section{Blindspot Detection}
+
+
+\subsubsection{Inputs}
+
+\begin{enumerate}
+	\item An artifact $art_0$ identified by its group-artifact-version (GAV) coordinates $gav_0$ within the Maven repository
+	\item A known vulnerability $vul$ identified by a CVE identifier 
+	\item A proof-of-vulnerability Maven project $pov$ that has a direct dependency on $art_0$ and a single test demonstrates the exploit for $vul$. I.e., this test succeeds if the exploit is successful.
+	\item A list of classes $cl.vul$ from $art_0$ exploited in $vul$  (optional)
+\end{enumerate}
+
+
+\subsubsection{Pipeline}
+
+
+\begin{enumerate}
+	\item Fetch the binary (jar) $art_0.bin$  of $art_0$ from the Maven repository using the REST API.
+	\item \label{pipeline:fetchsources} Fetch the source code  $art_0.src$  of $art_0$ from the Maven repository using the REST API.
+	\item \label{pipeline:extractclasses} Extract a list of classes $cl.query$  from the  $art_0.bin$ and/or $cl.vul$ to be used in queries. Those are non-qualified class names (i.e., package names are omitted). 
+	\item For each class in $cl \in cl.query$, use the Maven REST API to fetch a set of artifact coordinates (GAVs) $match_{cl}$  of artifacts with the respective class. 
+	\item \label{pipeline:classconsolidation} Merge all sets $match_{cl}$ into a single set $match$ .
+	\item  \label{pipeline:query}  For each artifact $art  \in match$, fetch the pom $art.pom$ using the Maven REST API, and if the pom contains a dependency on $art_0$ in the dependencies or has a matching group and artifact name, remove it. 
+	\item For each artifact $art  \in match$, fetch the source code $art.src$ using the Maven REST API. 
+	\item For each artifact $art  \in match$, run a clone analysis comparing $art_0.src$ and $art.src$, and if the result is negative, remove $art$ from $match$
+	\item TODO instantiation
+	
+\end{enumerate}
+
+
+The core algorithm contains several possible parameterisation. We describe them briefly, and state the settings we used successfully in the evaluation section. We do not claim that those settings are optimal , but the produce a reasonable yield in terms of artifacts with vulnerabilities discovered with modest computational resources.
+
+
+
+
+\subsection {Class Selection -- Step \ref{pipeline:extractclasses}}
+
+Selecting suitable fingerprint class names is obviously important to identify clones. Using all classes is not necessarily the best strategy as each class name is then used in a query, i.e. will result in one or multiple network calls. we used a simple approach to look for characteristic classes with names likely to be unique. For instance, a short name like \texttt{Utils} is likely to be used by many components. However, something like \texttt{JSONDriverManagerFactory} (hypothetical) is more likely to be unique. The heuristic used is to count camel case tokens in class names, and look for classes with a high count. In the example above, the count for \texttt{JSONDriverManagerFactory} is 4, whereas the count for \texttt{Utils} is 1.
+
+\todo[inline]{describe actual strategy}
+
+
+\subsection{Query Consolidation -- Step \ref{pipeline:classconsolidation}}
+
+\subsection{Artifact Queries-- Step \ref{pipeline:query}}
+
+Query results are paged. 
+
+
+\subsection {Artifact Queries -- Step \ref{pipeline:extractclasses}}
+
+Selecting suitable fingerprint class names is obviously important to identify clones. Using all classes is not necessarily the best strategy as each class name is then used in a query, i.e. will result in one or multiple network calls. we used a simple approach to look for characteristic classes with names likely to be unique. For instance, a short name like \texttt{Utils} is likely to be used by many components. However, something like \texttt{JSONDriverManagerFactory} (hypothetical) is more likely to be unique. The heuristic used is to count camel case tokens in class names, and look for classes with a high count. In the example above, the count for \texttt{JSONDriverManagerFactory} is 4, whereas the count for \texttt{Utils} is 1.
+
+\todo[inline]{describe actual strategy}
+
+
+
+%This may also not be required and could lead to misses, as often only a subset of classes is necessary to exploit a vulnerability.   
+
+  
+
+
+\section{Evaluation}
+
+\subsection{Dataset Selection}
+
+The evaluation dataset consists of vulnerabilities and the associates artifacts in the Maven repository for which those vulnerabilities have been reported. The selection was driven by the following considerations: (1) to select widely used artifacts, as determined by the number of downstream clients reported by Maven~\footnote{\todo[inline]{add details}} (2) to select CVEs of different types, namely arbitrary code execution (AOE) and denial of service (DOS) (3) to include some high-impact vulnerabilities that have been exploited such as log4shell and the deserialisation vulnerability~\footnote{\todo[inline]{add details}} (4) to select libraries with a different purpose. 
+
+Since our aim was to make CVEs testable in order to design a precise analysis, we furthermore gave preference to CVEs with available proof-of-concept (poc) projects we could then wrap or modify. In particular for vulnerabilties that have a high severity, such projects exist. Sometimes project covering entire classes of vulnerabilities can be used for this purpose, a good example is \textit{ysoserial}~\footnote{\url{https://github.com/frohoff/ysoserial}} that also  contains a poc for CVE-2015-7501 which we used in a modified, testable form. 
+
+
+\begin{table}
+	\begin{tabular}{|p{4.5cm}p{2cm}p{3.5cm}|}
+		\hline
+		artifact (gav) & short name & description  \\ 
+		\hline
+		commons-collections:\-commons-collections:\-3.2.1 & collect & data structure library  \\
+		com.alibaba:\-fastjson:\-1.2.80 & fast-json & JSON parser  \\
+		org.yaml:\-snakeyaml:\-1.250 & snakeyaml & YAML parser \\
+		org.apache.logging.\-log4j:\-log4j-core:\-2.14.1 & log4j & logging   \\
+		\hline
+
+		\hline
+	\end{tabular}
+	\caption{\label{tab:artifacts}Artifacts used in evaluation}
+\end{table}
+
+
+\begin{table}
+	\begin{tabular}{|p{3cm}p{2cm}p{2.4cm}p{2.2cm}|}
+		\hline
+		CVE & artifact & CWEs  & severity  \\ 
+		\hline
+		CVE-2015-7501 & collect &  502  &  9.8 critical \\
+	    CVE-2022-25845 & fastjson  & 502  & 9.8  critical \\
+		CVE-2022-38749 & snakeyaml & 121, 787  &  6.5 medium \\
+		CVE-2021-44228 & log4j & 20, 400, 502, 17 & 10  critical \\
+		\hline
+		
+		\hline
+	\end{tabular}
+	\caption{\label{tab:cves}CVEs used in evaluation}
+\end{table}
+
+
+Table~\ref{tab:cves} lists the vulnerabilities we studied, cross-referenced with artifacts using the short names defined in Table~\ref{tab:artifacts}. Vulnerability meta data (CWEs and severities are sourced from the National Vulnerability Database (NVD), obtained from \url{https://nvd.nist.gov/vuln/detail/<CVE>} accessed on TODO.
+
+
+\subsection{SCA Tool Selection}
+
+
+There are numerous tools available to detect the presence of vulnerabilities through dependencies. 
+
+
+
+\subsection{Tool Configuration}
+
+
+\subsection{Results}
 
 \section{Acknowledgements}
+
+\todo[inline] {Dhanushka, Emanual, Oracle, SFTI}
 
 \bibliographystyle{plain}
 \bibliography{bibliography}

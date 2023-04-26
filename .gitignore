@@ -10,3 +10,5 @@ shadedetector/out-snakeyaml
 shadedetector/out-fastjson-1.2.80
 shadedetector/out-fastjson-1.2.28
 shadedetector/.generated
+shadedetector/out-CVE20157501-commons-collections
+shadedetector/out-CVE202144228-log4j2.14.1

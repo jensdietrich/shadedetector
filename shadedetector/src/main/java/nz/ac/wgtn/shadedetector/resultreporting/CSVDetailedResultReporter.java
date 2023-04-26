@@ -65,7 +65,7 @@ public class CSVDetailedResultReporter implements ResultReporter {
         rows.add(header);
 
         for (CloneDetector.CloneRecord record:cloneAnalysesResults) {
-            String row = "" + component.getId() + SEP + potentialClone.getId() + SEP + record.getOriginal() + SEP + record.getClone() + SEP + record.getConvidence() + SEP + state.name() + SEP + packagesHaveChangedInClone;
+            String row = "" + component.getId() + SEP + potentialClone.getId() + SEP + record.getOriginal() + SEP + record.getClone() + SEP + record.getConfidence() + SEP + state.name() + SEP + packagesHaveChangedInClone;
             rows.add(row);
         }
 

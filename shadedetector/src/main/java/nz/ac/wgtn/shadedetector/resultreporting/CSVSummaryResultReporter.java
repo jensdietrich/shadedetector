@@ -102,7 +102,7 @@ public class CSVSummaryResultReporter implements ResultReporter {
     }
 
     private long count(Set<CloneDetector.CloneRecord> cloneAnalysesResults, DoublePredicate constraint) {
-        return cloneAnalysesResults.stream().mapToDouble(r -> r.getConvidence()).filter(constraint).count();
+        return cloneAnalysesResults.stream().mapToDouble(r -> r.getConfidence()).filter(constraint).count();
     }
 
     private boolean hasCloneRecord(Path p,Set<CloneDetector.CloneRecord> cloneRecords) {

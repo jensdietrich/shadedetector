@@ -11,8 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeroturnaround.exec.ProcessResult;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +34,12 @@ public class Main {
 
     private static final String DEFAULT_GENERATED_VERIFICATION_PROJECT_GROUP_NAME = "foo";
     private static final String DEFAULT_GENERATED_VERIFICATION_PROJECT_VERSION = "0.0.1";
+
+    // resources will be copied into verification projects instantiated for clones
+    private static final String[] SCA_SCRIPTS = {
+            "/run-owasp-dependencycheck.sh",
+            "/run-snyk.sh"
+    };
 
     public static void main (String[] args) throws ParseException {
         Options options = new Options();
@@ -318,19 +322,20 @@ public class Main {
         }
 
 
-        // if verificationProjectInstancesFolderFinal exists, copy sh scripts to run sca tools
-        Path resources = Path.of(Main.class.getResource("/").getPath());
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(resources)) {
-            for (Path path : stream) {
-                if (!Files.isDirectory(path) && path.toString().endsWith(".sh")) {
-                    Path dest = verificationProjectInstancesFolderFinal.resolve(path.getName(path.getNameCount()-1));
-                    Files.copy(path,dest, StandardCopyOption.REPLACE_EXISTING);
-                    LOGGER.info("copied SCA script from {} to {}",path,dest);
-                }
-            }
-        } catch (IOException e) {
-            LOGGER.error("error collecting and copying sca scripts",e);
-        }
+//        // if verificationProjectInstancesFolderFinal exists, copy sh scripts to run sca tools
+        // TODO needs to be be fixed to run for scripts packed in the jar
+//        for (String scaScript:SCA_SCRIPTS) {
+//            Path path = Path.of(scaScript);
+//            try {
+//                if (!Files.isDirectory(path) && path.toString().endsWith(".sh")) {
+//                    Path dest = verificationProjectInstancesFolderFinal.resolve(path.getName(path.getNameCount() - 1));
+//                    Files.copy(path, dest, StandardCopyOption.REPLACE_EXISTING);
+//                    LOGGER.info("copied SCA script from {} to {}", path, dest);
+//                }
+//            } catch (IOException e) {
+//                LOGGER.error("error collecting and copying sca scripts", e);
+//            }
+//        }
 
         try {
             resultReporter.endReporting(artifact);

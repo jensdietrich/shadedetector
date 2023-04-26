@@ -69,7 +69,7 @@ public class ImportTranslationExtractor {
 
         // clone records will override (in the unlikely case that there are multiple matches this might correct
         for (CloneDetector.CloneRecord record:cloneRecords) {
-            if (record.getConvidence() >= threshold) {
+            if (record.getConfidence() >= threshold) {
                 try {
                     String name1 = ASTUtils.getFullyQualifiedClassname(record.getOriginal());
                     String name2 = ASTUtils.getFullyQualifiedClassname(record.getClone());

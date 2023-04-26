@@ -15,23 +15,23 @@ public interface CloneDetector extends NamedService {
     // the paths may point to locations within a jar (using the zip file system)
     class CloneRecord {
         // a value between 0 and 1 (0 - no similarity, 1 -- highest similarity / equality)
-        private double convidence = 0;
+        private double confidence = 0;
         // class references are fully qualified class names / paths.
         private Path original = null;
         private Path clone = null;
 
-        public CloneRecord(double convidence, Path original, Path clone) {
-            this.convidence = convidence;
+        public CloneRecord(double confidence, Path original, Path clone) {
+            this.confidence = confidence;
             this.original = original;
             this.clone = clone;
         }
 
-        public double getConvidence() {
-            return convidence;
+        public double getConfidence() {
+            return confidence;
         }
 
-        public void setConvidence(double convidence) {
-            this.convidence = convidence;
+        public void setConfidence(double confidence) {
+            this.confidence = confidence;
         }
 
         public Path getOriginal() {
@@ -55,12 +55,12 @@ public interface CloneDetector extends NamedService {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             CloneRecord that = (CloneRecord) o;
-            return Double.compare(that.convidence, convidence) == 0 && Objects.equals(original, that.original) && Objects.equals(clone, that.clone);
+            return Double.compare(that.confidence, confidence) == 0 && Objects.equals(original, that.original) && Objects.equals(clone, that.clone);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(convidence, original, clone);
+            return Objects.hash(confidence, original, clone);
         }
     }
 

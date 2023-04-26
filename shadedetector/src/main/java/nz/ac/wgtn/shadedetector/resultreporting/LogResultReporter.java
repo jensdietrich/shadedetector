@@ -34,7 +34,7 @@ public class LogResultReporter implements ResultReporter {
             LOGGER.info("\tcloning-component: {}", potentialClone.getId());
             LOGGER.info("\toriginal-class: {}", record.getOriginal().toString());
             LOGGER.info("\tcloned-class: {}", record.getClone().toString());
-            LOGGER.info("\tconfidence: {}", record.getConvidence());
+            LOGGER.info("\tconfidence: {}", record.getConfidence());
             LOGGER.info("\tverification state: {}", state.name());
             LOGGER.info("\tpackages changed: {}",packagesHaveChangedInClone);
         }

@@ -41,7 +41,7 @@ public class ASTCloneDetectionTests {
 
         assertEquals(javaSources.size(),records.size());
         for (CloneDetector.CloneRecord record:records) {
-            assertEquals(1.0,record.getConvidence());
+            assertEquals(1.0,record.getConfidence());
         }
 
         Set<Path> set1 = new HashSet<>(javaSources);
@@ -57,7 +57,7 @@ public class ASTCloneDetectionTests {
         Set<CloneDetector.CloneRecord> records = new ASTBasedCloneDetector().detect(COMMONS_COLLECTIONS4_40_ORIGINAL,COMMONS_COLLECTIONS4_40_RENAMED_PACKAGES);
         assertEquals(javaSources.size(),records.size());
         for (CloneDetector.CloneRecord record:records) {
-            assertEquals(1.0,record.getConvidence(),"mismatch " + record.getOriginal() + " <---> " + record.getClone());
+            assertEquals(1.0,record.getConfidence(),"mismatch " + record.getOriginal() + " <---> " + record.getClone());
         }
 
         Set<Path> set1 = new HashSet<>(javaSources);
@@ -73,7 +73,7 @@ public class ASTCloneDetectionTests {
         Set<Path> javaSources41 = new HashSet(Utils.listJavaSources(COMMONS_COLLECTIONS4_41_ORIGINAL,true));
         Set<CloneDetector.CloneRecord> records = new ASTBasedCloneDetector().detect(COMMONS_COLLECTIONS4_40_ORIGINAL,COMMONS_COLLECTIONS4_41_ORIGINAL);
         assertEquals(javaSources40.size(),records.size());
-        boolean someFail = records.stream().anyMatch(record -> record.getConvidence() < 1.0);
+        boolean someFail = records.stream().anyMatch(record -> record.getConfidence() < 1.0);
         assertTrue(someFail);
     }
 

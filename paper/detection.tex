@@ -1,0 +1,60 @@
+\section{Blindspot Detection}
+\label{sec:detection}
+
+\subsubsection{Inputs}
+
+\begin{enumerate}
+	\item An artifact $art_0$ identified by its group-artifact-version (GAV) coordinates $gav_0$ within the Maven repository
+	\item A known vulnerability $vul$ identified by a CVE identifier 
+	\item A proof-of-vulnerability Maven project $pov$ that has a direct dependency on $art_0$ and a single test demonstrates the exploit for $vul$. I.e., this test succeeds if the exploit is successful.
+	\item A list of classes $cl.vul$ from $art_0$ exploited in $vul$  (optional)
+\end{enumerate}
+
+
+\subsubsection{Pipeline}
+
+
+\begin{enumerate}
+	\item Fetch the binary (jar) $art_0.bin$  of $art_0$ from the Maven repository using the REST API.
+	\item \label{pipeline:fetchsources} Fetch the source code  $art_0.src$  of $art_0$ from the Maven repository using the REST API.
+	\item \label{pipeline:extractclasses} Extract a list of classes $cl.query$  from the  $art_0.bin$ and/or $cl.vul$ to be used in queries. Those are non-qualified class names (i.e., package names are omitted). 
+	\item For each class in $cl \in cl.query$, use the Maven REST API to fetch a set of artifact coordinates (GAVs) $match_{cl}$  of artifacts with the respective class. 
+	\item \label{pipeline:classconsolidation} Merge all sets $match_{cl}$ into a single set $match$ .
+	\item  \label{pipeline:query}  For each artifact $art  \in match$, fetch the pom $art.pom$ using the Maven REST API, and if the pom contains a dependency on $art_0$ in the dependencies or has a matching group and artifact name, remove it. 
+	\item For each artifact $art  \in match$, fetch the source code $art.src$ using the Maven REST API. 
+	\item For each artifact $art  \in match$, run a clone analysis comparing $art_0.src$ and $art.src$, and if the result is negative, remove $art$ from $match$
+	\item TODO instantiation
+	
+\end{enumerate}
+
+
+The core algorithm contains several possible parameterisation. We describe them briefly, and state the settings we used successfully in the evaluation section. We do not claim that those settings are optimal , but the produce a reasonable yield in terms of artifacts with vulnerabilities discovered with modest computational resources.
+
+
+
+
+\subsection {Class Selection -- Step \ref{pipeline:extractclasses}}
+
+Selecting suitable fingerprint class names is obviously important to identify clones. Using all classes is not necessarily the best strategy as each class name is then used in a query, i.e. will result in one or multiple network calls. we used a simple approach to look for characteristic classes with names likely to be unique. For instance, a short name like \texttt{Utils} is likely to be used by many components. However, something like \texttt{JSONDriverManagerFactory} (hypothetical) is more likely to be unique. The heuristic used is to count camel case tokens in class names, and look for classes with a high count. In the example above, the count for \texttt{JSONDriverManagerFactory} is 4, whereas the count for \texttt{Utils} is 1.
+
+\todo[inline]{describe actual strategy}
+
+
+\subsection{Query Consolidation -- Step \ref{pipeline:classconsolidation}}
+
+\subsection{Artifact Queries-- Step \ref{pipeline:query}}
+
+Query results are paged. 
+
+
+\subsection {Artifact Queries -- Step \ref{pipeline:extractclasses}}
+
+Selecting suitable fingerprint class names is obviously important to identify clones. Using all classes is not necessarily the best strategy as each class name is then used in a query, i.e. will result in one or multiple network calls. we used a simple approach to look for characteristic classes with names likely to be unique. For instance, a short name like \texttt{Utils} is likely to be used by many components. However, something like \texttt{JSONDriverManagerFactory} (hypothetical) is more likely to be unique. The heuristic used is to count camel case tokens in class names, and look for classes with a high count. In the example above, the count for \texttt{JSONDriverManagerFactory} is 4, whereas the count for \texttt{Utils} is 1.
+
+\todo[inline]{describe actual strategy}
+
+
+
+%This may also not be required and could lead to misses, as often only a subset of classes is necessary to exploit a vulnerability.   
+
+ 

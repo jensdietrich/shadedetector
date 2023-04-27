@@ -5,6 +5,7 @@ import nz.ac.wgtn.shadedetector.clonedetection.ImportTranslationExtractor;
 import nz.ac.wgtn.shadedetector.cveverification.MVNExe;
 import nz.ac.wgtn.shadedetector.cveverification.MVNProjectCloner;
 import nz.ac.wgtn.shadedetector.cveverification.POMUtils;
+import nz.ac.wgtn.shadedetector.cveverification.SurefireUtils;
 import nz.ac.wgtn.shadedetector.resultreporting.CombinedResultReporter;
 import org.apache.commons.cli.*;
 import org.slf4j.Logger;
@@ -63,6 +64,8 @@ public class Main {
         options.addOption("vov","vulnerabilityoutput_final",true,"the root folder where for each clone, a project created in the staging folder will be moved to if verification succeeds (i.e. if the vulnerability is shown to be present)");
         options.addOption("vg","vulnerabilitygroup",true,"the group name used in the projects generated to verify the presence of a vulnerability (default is \"" + DEFAULT_GENERATED_VERIFICATION_PROJECT_GROUP_NAME + "\")");
         options.addOption("vv","vulnerabilityversion",true,"the version used in the projects generated to verify the presence of a vulnerability (default is \"" + DEFAULT_GENERATED_VERIFICATION_PROJECT_VERSION + "\")");
+
+        options.addOption("env","environment",true,"a property file defining environment variables used when running tests on generated projects used to verify vulnerabilities, for instance, this can be used to set the Java version");
 
         CommandLineParser parser = new DefaultParser();
 
@@ -283,26 +286,50 @@ public class Main {
                     }
 
                     if (result.isTested()) {
-                        Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(verificationProjectArtifactName);
-                        LOGGER.info("\tmoving verified project folder from {} to {}",verificationProjectFolderStaged,verificationProjectFolderFinal);
-                        MVNProjectCloner.moveMvnProject(verificationProjectFolderStaged,verificationProjectFolderFinal);
-
-                        // re-test to create surefire reports
-                        LOGGER.error("running build test on final project {}",verificationProjectFolderFinal);
-                        Path buildLog = verificationProjectFolderFinal.resolve(TEST_LOG);
-                        try {
-                            ProcessResult pr = MVNExe.mvnTest(verificationProjectFolderFinal);
-                            String out = pr.outputUTF8();
-                            Files.write(buildLog,List.of(out));
-
-                            if (pr.getExitValue()!=0) {
-                                LOGGER.error("error testing final project {}",verificationProjectFolderFinal);
+                        Path surefireReports = verificationProjectFolderStaged.resolve("target/surefire-reports");
+                        boolean testsSucceeded = false;
+                        if (Files.exists(surefireReports)) {
+                            SurefireUtils.TestResults testResults = SurefireUtils.parseSurefireReports(surefireReports);
+                            if (testResults.getFailureCount()>0) {
+                                LOGGER.warn("there are {} failed tests in {}",testResults.getFailureCount(),verificationProjectFolderStaged);
                             }
+                            if (testResults.getErrorCount()>0) {
+                                LOGGER.warn("there are {} error tests in {}",testResults.getErrorCount(),verificationProjectFolderStaged);
+                            }
+                            if (testResults.getSkippedCount()>0) {
+                                LOGGER.warn("there are {} skipped tests in {}",testResults.getSkippedCount(),verificationProjectFolderStaged);
+                            }
+
+                            // important -- do not proceed if some tests are skipped
+                            testsSucceeded = testResults.allTestsExecuted() && testResults.allTestsSucceeded();
                         }
-                        catch (Exception x) {
-                            LOGGER.error("error testing final project {}",verificationProjectFolderFinal,x);
-                            String stacktrace = Utils.printStacktrace(x);
-                            Files.write(buildLog,List.of(stacktrace));
+                        else {
+                            LOGGER.warn("no surefire reports found in {}, will assume that tests have not passed",verificationProjectFolderStaged);
+                        }
+
+
+                        if (testsSucceeded) {
+
+                            Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(verificationProjectArtifactName);
+                            LOGGER.info("\tmoving verified project folder from {} to {}", verificationProjectFolderStaged, verificationProjectFolderFinal);
+                            MVNProjectCloner.moveMvnProject(verificationProjectFolderStaged, verificationProjectFolderFinal);
+
+                            // re-test to create surefire reports
+                            LOGGER.error("running build test on final project {}", verificationProjectFolderFinal);
+                            Path buildLog = verificationProjectFolderFinal.resolve(TEST_LOG);
+                            try {
+                                ProcessResult pr = MVNExe.mvnTest(verificationProjectFolderFinal);
+                                String out = pr.outputUTF8();
+                                Files.write(buildLog, List.of(out));
+
+                                if (pr.getExitValue() != 0) {
+                                    LOGGER.error("error testing final project {}", verificationProjectFolderFinal);
+                                }
+                            } catch (Exception x) {
+                                LOGGER.error("error testing final project {}", verificationProjectFolderFinal, x);
+                                String stacktrace = Utils.printStacktrace(x);
+                                Files.write(buildLog, List.of(stacktrace));
+                            }
                         }
 
                     }

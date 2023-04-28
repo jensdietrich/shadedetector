@@ -1,6 +1,7 @@
 package nz.ac.wgtn.shadedetector.cveverification;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
 import org.zeroturnaround.exec.ProcessExecutor;
 import org.zeroturnaround.exec.ProcessResult;
 import java.io.BufferedReader;
@@ -24,8 +25,12 @@ public class MVNExe {
         return mvn(projectFolder, Collections.EMPTY_MAP,"clean","test");
     }
 
-    public static ProcessResult mvnTest(Path projectFolder, String... phases) throws Exception {
-        return mvn(projectFolder, Collections.EMPTY_MAP,"test");
+    public static ProcessResult mvnTest(Path projectFolder, Properties environment, String... phases) throws Exception {
+        return mvn(projectFolder, Maps.newHashMap(Maps.fromProperties(environment)),"test");
+    }
+
+    public static ProcessResult mvnTest(Path projectFolder, Map<String,String> environment, String... phases) throws Exception {
+        return mvn(projectFolder, environment,"test");
     }
 
     public static ProcessResult mvnCleanCompile(Path projectFolder, Map<String,String> environmentVariables, String... phases) throws Exception {
@@ -35,6 +40,16 @@ public class MVNExe {
     public static ProcessResult mvnCleanCompile(Path projectFolder) throws Exception {
         return mvn(projectFolder, Collections.EMPTY_MAP,"clean","compile");
     }
+
+    public static ProcessResult mvnCleanCompile(Path projectFolder,Properties environment) throws Exception {
+        return mvn(projectFolder, Maps.newHashMap(Maps.fromProperties(environment)),"clean","compile");
+    }
+
+    public static ProcessResult mvnCleanCompile(Path projectFolder,Map<String,String> environment) throws Exception {
+        return mvn(projectFolder, environment,"clean","compile");
+    }
+
+
 
     public static ProcessResult mvn(Path projectFolder, Map<String,String> environmentVariables, String... phases) throws Exception {
 

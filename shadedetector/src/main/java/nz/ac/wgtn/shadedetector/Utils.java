@@ -116,9 +116,8 @@ public class Utils {
                 .collect(Collectors.toList());
         }
         else {
-
-            Map<String, String> env = new HashMap<>();
-            FileSystem fs = FileSystems.newFileSystem(zipOrFolder, env, null);
+            // use API in Java <= 11
+            FileSystem fs = FileSystems.newFileSystem(zipOrFolder, Utils.class.getClassLoader());
             return Streams.stream(fs.getRootDirectories())
                 .flatMap(root -> {
                     try {

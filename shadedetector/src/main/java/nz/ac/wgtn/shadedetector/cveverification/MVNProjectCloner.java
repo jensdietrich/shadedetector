@@ -72,7 +72,7 @@ public class MVNProjectCloner {
 
     }
 
-    public static CloneResult cloneMvnProject (Path originalProjectFolder, Path clonedProjectFolder, GAV originalDependency, GAV cloneDependency, GAV clonedProjectCoordinates, Map<String,String> importTranslation) throws IOException, JDOMException {
+    public static CloneResult cloneMvnProject (Path originalProjectFolder, Path clonedProjectFolder, GAV originalDependency, GAV cloneDependency, GAV clonedProjectCoordinates, Map<String,String> importTranslation,Properties environment) throws IOException, JDOMException {
 
         CloneResult result = new CloneResult();
 
@@ -115,7 +115,7 @@ public class MVNProjectCloner {
 
         Path logFile = clonedProjectFolder.resolve(COMPILATION_LOG);
         try {
-            ProcessResult pr = MVNExe.mvnCleanCompile(clonedProjectFolder);
+            ProcessResult pr = MVNExe.mvnCleanCompile(clonedProjectFolder,environment);
             if (pr.getExitValue()==0) {
                 result.success(COMPILED);
             }
@@ -136,7 +136,7 @@ public class MVNProjectCloner {
 
         logFile = clonedProjectFolder.resolve(TEST_LOG);
         try {
-            ProcessResult pr = MVNExe.mvnTest(clonedProjectFolder);
+            ProcessResult pr = MVNExe.mvnTest(clonedProjectFolder,environment);
             if (pr.getExitValue()==0) {
                 result.success(TESTED);
             }

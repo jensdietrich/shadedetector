@@ -12,11 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeroturnaround.exec.ProcessResult;
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.file.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -65,7 +63,7 @@ public class Main {
         options.addOption("vg","vulnerabilitygroup",true,"the group name used in the projects generated to verify the presence of a vulnerability (default is \"" + DEFAULT_GENERATED_VERIFICATION_PROJECT_GROUP_NAME + "\")");
         options.addOption("vv","vulnerabilityversion",true,"the version used in the projects generated to verify the presence of a vulnerability (default is \"" + DEFAULT_GENERATED_VERIFICATION_PROJECT_VERSION + "\")");
 
-        options.addOption("env","environment",true,"a property file defining environment variables used when running tests on generated projects used to verify vulnerabilities, for instance, this can be used to set the Java version");
+        options.addOption("env","testenvironment",true,"a property file defining environment variables used when running tests on generated projects used to verify vulnerabilities, for instance, this can be used to set the Java version");
 
         CommandLineParser parser = new DefaultParser();
 
@@ -99,6 +97,22 @@ public class Main {
         if (cmd.hasOption("output3")) {
             resultReporters.add(instantiateOptional(RESULT_REPORTER_FACTORY,cmd,"result reporter","output3"));
         }
+
+        Properties testEnviron = new Properties();
+        if (cmd.hasOption("testenvironment")) {
+            String testEnvironDef = cmd.getOptionValue("testenvironment");
+            Path testEvironFile = Path.of(testEnvironDef);
+            Preconditions.checkArgument(Files.exists(testEvironFile),"test environment file not found: " + testEvironFile);
+            try (Reader reader = Files.newBufferedReader(testEvironFile)) {
+                testEnviron.load(reader);
+                LOGGER.error("test environment loaded from {}",testEvironFile);
+            } catch (IOException e) {
+                LOGGER.error("cannot load test environment from {}",testEvironFile,e);
+                throw new RuntimeException(e);
+            }
+        }
+
+
         ResultReporter resultReporter = resultReporters.size()==1 ?
             resultReporters.get(0) :
             new CombinedResultReporter(resultReporters);
@@ -274,7 +288,8 @@ public class Main {
                         gav,
                         match.asGAV(),
                         new GAV(verificationProjectGroupName,verificationProjectArtifactName,verificationProjectVersion),
-                        importTranslations
+                        importTranslations,
+                        testEnviron
                     );
                     packagesHaveChangedInClone = true;
 
@@ -318,7 +333,7 @@ public class Main {
                             LOGGER.error("running build test on final project {}", verificationProjectFolderFinal);
                             Path buildLog = verificationProjectFolderFinal.resolve(TEST_LOG);
                             try {
-                                ProcessResult pr = MVNExe.mvnTest(verificationProjectFolderFinal);
+                                ProcessResult pr = MVNExe.mvnTest(verificationProjectFolderFinal,testEnviron);
                                 String out = pr.outputUTF8();
                                 Files.write(buildLog, List.of(out));
 

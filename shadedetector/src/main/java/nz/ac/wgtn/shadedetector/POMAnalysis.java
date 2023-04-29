@@ -11,6 +11,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 /**
@@ -59,13 +60,22 @@ public class POMAnalysis {
     }
 
     public static boolean hasGroupAndArtifactId(Path pom,String groupId, String artifactId) throws Exception {
-        NodeList aNode = Utils.evalXPath(pom.toFile(), "/project/artifactId");
-        NodeList gNode = Utils.evalXPath(pom.toFile(), "/project/groupId");
-        // todo: can group be inherited from parent ?
-        if (aNode.getLength()>0 && gNode.getLength()>0) {
-            return aNode.item(0).getTextContent().equals(artifactId) && gNode.item(0).getTextContent().equals(groupId);
+        String pomArtifactId = getElementText(pom,"/project/artifactId");
+        String pomGroupId = getElementText(pom,"/project/groupId");
+        if (pomGroupId==null) {
+            // check whether this has been inherited from parent
+            pomGroupId = getElementText(pom,"/project/parent/groupId");
         }
-        return false;
+        return Objects.equals(pomArtifactId,artifactId) && Objects.equals(pomGroupId,groupId);
+
+    }
+
+    private static String getElementText(Path xml, String xpath) throws Exception {
+        NodeList aNode = Utils.evalXPath(xml.toFile(), xpath);
+        if (aNode.getLength()>0) {
+            return aNode.item(0).getTextContent();
+        }
+        return null;
     }
 
     public static List<MVNDependency> getDependencies(File pom) throws Exception {

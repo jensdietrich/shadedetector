@@ -17,12 +17,16 @@ Since our aim was to make CVEs testable in order to design a precise analysis, w
 		com.alibaba:\-fastjson:\-1.2.80 & fast-json & JSON parser  \\
 		org.yaml:\-snakeyaml:\-1.250 & snakeyaml & YAML parser \\
 		org.apache.logging.\-log4j:\-log4j-core:\-2.14.1 & log4j & logging   \\
-		\hline
-
+		org.apache-extras.beanshell.\-bsh.\-2.0b5 & beanshell & scripting DSL \\ 
+		com.google.guava:\-guava:\-11.0.1 & guava & utilities and data structures \\
+		org.apache.commons:\-commons-text:\-1.9 & c-text & string utilities \\
 		\hline
 	\end{tabular}
 	\caption{\label{tab:artifacts}Artifacts used in evaluation}
 \end{table}
+
+
+
 
 
 \begin{table}
@@ -31,15 +35,20 @@ Since our aim was to make CVEs testable in order to design a precise analysis, w
 		CVE & artifact & CWEs  & severity  \\ 
 		\hline
 		CVE-2015-7501 & collect &  502  &  9.8 critical \\
+		CVE-2016-2510 & beanshell & 19 & 8.1 high \\ 
+		CVE-2018-10237  & guava & 770 & 5.9 medium  \\
 	    CVE-2022-25845 & fastjson  & 502  & 9.8  critical \\
 		CVE-2022-38749 & snakeyaml & 121, 787  &  6.5 medium \\
 		CVE-2021-44228 & log4j & 20, 400, 502, 17 & 10  critical \\
+		CVE-2022-42889 & c-text & 94 & 9.8 critical \\ 
 		\hline
 		
 		\hline
 	\end{tabular}
 	\caption{\label{tab:cves}CVEs used in evaluation}
 \end{table}
+
+
 
 
 Table~\ref{tab:cves} lists the vulnerabilities we studied, cross-referenced with artifacts using the short names defined in Table~\ref{tab:artifacts}. Vulnerability meta data (CWEs and severities are sourced from the National Vulnerability Database (NVD), obtained from \url{https://nvd.nist.gov/vuln/detail/<CVE>} accessed on TODO.

@@ -263,102 +263,106 @@ public class Main {
             Set<CloneDetector.CloneRecord> cloneAnalysesResults = Set.of();
             List<Path> sources = List.of();
             boolean packagesHaveChangedInClone = false; // indicates shading with packages being renamed
-            try {
-                Path src = FetchResources.fetchSources(match);
-                sources = Utils.listJavaSources(src,true);
-                cloneAnalysesResults = cloneDetector.detect(originalSources,src);
 
-                LOGGER.info("Reporting results for " + match.getId());
-
-                // TODO abstract threshold
-                if (cloneAnalysesResults.size()>10) {
-                    LOGGER.info("generating project to verifify vulnerability for " + match);
-                    String verificationProjectArtifactName = match.toString().replace(":","__");
-                    LOGGER.info("\tgroupId: " + verificationProjectGroupName);
-                    LOGGER.info("\tartifactId: " + verificationProjectArtifactName);
-                    LOGGER.info("\tversion: " + verificationProjectVersion);
-                    Path verificationProjectFolderStaged = verificationProjectInstancesFolderStaging.resolve(verificationProjectArtifactName);
-                    LOGGER.info("\tproject folder: " + verificationProjectFolderStaged);
-
-                    Map importTranslations = ImportTranslationExtractor.computeImportTranslations(originalSources,src,cloneAnalysesResults);
-
-                    MVNProjectCloner.CloneResult result = MVNProjectCloner.cloneMvnProject(
-                        verificationProjectTemplateFolder,
-                        verificationProjectFolderStaged,
-                        gav,
-                        match.asGAV(),
-                        new GAV(verificationProjectGroupName,verificationProjectArtifactName,verificationProjectVersion),
-                        importTranslations,
-                        testEnviron
-                    );
-                    packagesHaveChangedInClone = true;
-
-                    if (result.isCompiled()) {
-                        state = ResultReporter.VerificationState.COMPILED;
-                    }
-                    if (result.isTested()) { // override
-                        state = ResultReporter.VerificationState.TESTED;
-                    }
-
-                    if (result.isTested()) {
-                        Path surefireReports = verificationProjectFolderStaged.resolve("target/surefire-reports");
-                        boolean testsSucceeded = false;
-                        if (Files.exists(surefireReports)) {
-                            SurefireUtils.TestResults testResults = SurefireUtils.parseSurefireReports(surefireReports);
-                            if (testResults.getFailureCount()>0) {
-                                LOGGER.warn("there are {} failed tests in {}",testResults.getFailureCount(),verificationProjectFolderStaged);
-                            }
-                            if (testResults.getErrorCount()>0) {
-                                LOGGER.warn("there are {} error tests in {}",testResults.getErrorCount(),verificationProjectFolderStaged);
-                            }
-                            if (testResults.getSkippedCount()>0) {
-                                LOGGER.warn("there are {} skipped tests in {}",testResults.getSkippedCount(),verificationProjectFolderStaged);
-                            }
-
-                            // important -- do not proceed if some tests are skipped
-                            testsSucceeded = testResults.allTestsExecuted() && testResults.allTestsSucceeded();
-                        }
-                        else {
-                            LOGGER.warn("no surefire reports found in {}, will assume that tests have not passed",verificationProjectFolderStaged);
-                        }
-
-
-                        if (testsSucceeded) {
-
-                            Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(verificationProjectArtifactName);
-                            LOGGER.info("\tmoving verified project folder from {} to {}", verificationProjectFolderStaged, verificationProjectFolderFinal);
-                            MVNProjectCloner.moveMvnProject(verificationProjectFolderStaged, verificationProjectFolderFinal);
-
-                            // re-test to create surefire reports
-                            LOGGER.error("running build test on final project {}", verificationProjectFolderFinal);
-                            Path buildLog = verificationProjectFolderFinal.resolve(TEST_LOG);
-                            try {
-                                ProcessResult pr = MVNExe.mvnTest(verificationProjectFolderFinal,testEnviron);
-                                String out = pr.outputUTF8();
-                                Files.write(buildLog, List.of(out));
-
-                                if (pr.getExitValue() != 0) {
-                                    LOGGER.error("error testing final project {}", verificationProjectFolderFinal);
-                                }
-                            } catch (Exception x) {
-                                LOGGER.error("error testing final project {}", verificationProjectFolderFinal, x);
-                                String stacktrace = Utils.printStacktrace(x);
-                                Files.write(buildLog, List.of(stacktrace));
-                            }
-                        }
-
-                    }
-                }
-
-            } catch (Exception e) {
-                LOGGER.error("cannot fetch sources for artifact {}",match.toString(),e);
-                countMatchesAnalysedFailed.incrementAndGet();
+            if (Blacklist.contains(match)) {
+                LOGGER.warn("Skipping blacklisted artifact: " + match.asGAV().asString());
             }
-            finally {
+            else {
                 try {
-                    resultReporter.report(artifact,match,sources,cloneAnalysesResults,state,packagesHaveChangedInClone);
-                } catch (IOException e) {
-                    LOGGER.error("error reporting",e);
+                    Path src = FetchResources.fetchSources(match);
+                    sources = Utils.listJavaSources(src, true);
+                    cloneAnalysesResults = cloneDetector.detect(originalSources, src);
+
+                    LOGGER.info("Reporting results for " + match.getId());
+
+                    // TODO abstract threshold
+                    if (cloneAnalysesResults.size() > 10) {
+                        LOGGER.info("generating project to verifify vulnerability for " + match);
+                        String verificationProjectArtifactName = match.toString().replace(":", "__");
+                        LOGGER.info("\tgroupId: " + verificationProjectGroupName);
+                        LOGGER.info("\tartifactId: " + verificationProjectArtifactName);
+                        LOGGER.info("\tversion: " + verificationProjectVersion);
+                        Path verificationProjectFolderStaged = verificationProjectInstancesFolderStaging.resolve(verificationProjectArtifactName);
+                        LOGGER.info("\tproject folder: " + verificationProjectFolderStaged);
+
+                        Map importTranslations = ImportTranslationExtractor.computeImportTranslations(originalSources, src, cloneAnalysesResults);
+
+                        MVNProjectCloner.CloneResult result = MVNProjectCloner.cloneMvnProject(
+                                verificationProjectTemplateFolder,
+                                verificationProjectFolderStaged,
+                                gav,
+                                match.asGAV(),
+                                new GAV(verificationProjectGroupName, verificationProjectArtifactName, verificationProjectVersion),
+                                importTranslations,
+                                testEnviron
+                        );
+                        packagesHaveChangedInClone = true;
+
+                        if (result.isCompiled()) {
+                            state = ResultReporter.VerificationState.COMPILED;
+                        }
+                        if (result.isTested()) { // override
+                            state = ResultReporter.VerificationState.TESTED;
+                        }
+
+                        if (result.isTested()) {
+                            Path surefireReports = verificationProjectFolderStaged.resolve("target/surefire-reports");
+                            boolean testsSucceeded = false;
+                            if (Files.exists(surefireReports)) {
+                                SurefireUtils.TestResults testResults = SurefireUtils.parseSurefireReports(surefireReports);
+                                if (testResults.getFailureCount() > 0) {
+                                    LOGGER.warn("there are {} failed tests in {}", testResults.getFailureCount(), verificationProjectFolderStaged);
+                                }
+                                if (testResults.getErrorCount() > 0) {
+                                    LOGGER.warn("there are {} error tests in {}", testResults.getErrorCount(), verificationProjectFolderStaged);
+                                }
+                                if (testResults.getSkippedCount() > 0) {
+                                    LOGGER.warn("there are {} skipped tests in {}", testResults.getSkippedCount(), verificationProjectFolderStaged);
+                                }
+
+                                // important -- do not proceed if some tests are skipped
+                                testsSucceeded = testResults.allTestsExecuted() && testResults.allTestsSucceeded();
+                            } else {
+                                LOGGER.warn("no surefire reports found in {}, will assume that tests have not passed", verificationProjectFolderStaged);
+                            }
+
+
+                            if (testsSucceeded) {
+
+                                Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(verificationProjectArtifactName);
+                                LOGGER.info("\tmoving verified project folder from {} to {}", verificationProjectFolderStaged, verificationProjectFolderFinal);
+                                MVNProjectCloner.moveMvnProject(verificationProjectFolderStaged, verificationProjectFolderFinal);
+
+                                // re-test to create surefire reports
+                                LOGGER.error("running build test on final project {}", verificationProjectFolderFinal);
+                                Path buildLog = verificationProjectFolderFinal.resolve(TEST_LOG);
+                                try {
+                                    ProcessResult pr = MVNExe.mvnTest(verificationProjectFolderFinal, testEnviron);
+                                    String out = pr.outputUTF8();
+                                    Files.write(buildLog, List.of(out));
+
+                                    if (pr.getExitValue() != 0) {
+                                        LOGGER.error("error testing final project {}", verificationProjectFolderFinal);
+                                    }
+                                } catch (Exception x) {
+                                    LOGGER.error("error testing final project {}", verificationProjectFolderFinal, x);
+                                    String stacktrace = Utils.printStacktrace(x);
+                                    Files.write(buildLog, List.of(stacktrace));
+                                }
+                            }
+
+                        }
+                    }
+
+                } catch (Exception e) {
+                    LOGGER.error("cannot fetch sources for artifact {}", match.toString(), e);
+                    countMatchesAnalysedFailed.incrementAndGet();
+                } finally {
+                    try {
+                        resultReporter.report(artifact, match, sources, cloneAnalysesResults, state, packagesHaveChangedInClone);
+                    } catch (IOException e) {
+                        LOGGER.error("error reporting", e);
+                    }
                 }
             }
         }

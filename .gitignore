@@ -14,3 +14,4 @@ shadedetector/out-CVE20157501-commons-collections
 shadedetector/out-CVE202144228-log4j2.14.1
 out**
 main.out
+shadedetector/results

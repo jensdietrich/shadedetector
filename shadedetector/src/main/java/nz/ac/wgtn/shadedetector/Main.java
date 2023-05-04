@@ -296,7 +296,7 @@ public class Main {
                                 importTranslations,
                                 testEnviron
                         );
-                        packagesHaveChangedInClone = true;
+                        packagesHaveChangedInClone = result.isRenamedImports();
 
                         if (result.isCompiled()) {
                             state = ResultReporter.VerificationState.COMPILED;

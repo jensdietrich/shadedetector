@@ -1,9 +1,6 @@
-## Fetch resources for 1k query results for `InvokerTransformer` and `TransformingComparator`
+## Mising Sources
 
-* artifacts processed: 1000
-* fetch succeeded: 972
-* fetch succeeded but not a zip: 4
 
-## Fetching Versions
+org.jruby.extras:jvyamlb:0.1.3 and several other versions -- source code is missing. When analysing CVE-2022-38749. 
 
-* when searching for `org.apache.commons:commons-collections4` the rest api returns **4 versions**, while the [mvn web site](https://mvnrepository.com/artifact/org.apache.commons/commons-collections4) lists **5 versions**, *v4.4* (the latest) is missing 
+

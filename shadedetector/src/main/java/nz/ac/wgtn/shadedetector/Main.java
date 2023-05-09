@@ -1,27 +1,33 @@
 package nz.ac.wgtn.shadedetector;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
 import nz.ac.wgtn.shadedetector.clonedetection.ImportTranslationExtractor;
 import nz.ac.wgtn.shadedetector.cveverification.MVNExe;
 import nz.ac.wgtn.shadedetector.cveverification.MVNProjectCloner;
 import nz.ac.wgtn.shadedetector.cveverification.POMUtils;
 import nz.ac.wgtn.shadedetector.cveverification.SurefireUtils;
 import nz.ac.wgtn.shadedetector.resultreporting.CombinedResultReporter;
+import nz.ac.wgtn.shadedetector.resultreporting.ProgressReporter;
 import org.apache.commons.cli.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeroturnaround.exec.ProcessResult;
+
+import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * CLI main class.
  * @author jens dietrich
  */
 public class Main {
+
 
     private static Logger LOGGER = LoggerFactory.getLogger(Main.class);
     public static final String TEST_LOG = ".mvn-test.log";
@@ -33,6 +39,10 @@ public class Main {
 
     private static final String DEFAULT_GENERATED_VERIFICATION_PROJECT_GROUP_NAME = "foo";
     private static final String DEFAULT_GENERATED_VERIFICATION_PROJECT_VERSION = "0.0.1";
+
+    private static final String DEFAULT_PROGRESS_STATS_NAME = "stats.log";
+
+    public enum ProcessingStage {QUERY_RESULTS, CONSOLIDATED_QUERY_RESULTS, NO_DEPENDENCY_TO_VULNERABLE, CLONE_DETECTED, POC_INSTANCE_COMPILED, POC_INSTANCE_TESTED, POC_INSTANCE_TESTED_SHADED, TESTED}
 
     // resources will be copied into verification projects instantiated for clones
     private static final String[] SCA_SCRIPTS = {
@@ -64,6 +74,8 @@ public class Main {
         options.addOption("vv","vulnerabilityversion",true,"the version used in the projects generated to verify the presence of a vulnerability (default is \"" + DEFAULT_GENERATED_VERIFICATION_PROJECT_VERSION + "\")");
 
         options.addOption("env","testenvironment",true,"a property file defining environment variables used when running tests on generated projects used to verify vulnerabilities, for instance, this can be used to set the Java version");
+        options.addOption("ps","stats",true,"the file to which progress stats will be written (default is \"" + DEFAULT_PROGRESS_STATS_NAME + "\"");
+
 
         CommandLineParser parser = new DefaultParser();
 
@@ -117,6 +129,13 @@ public class Main {
             resultReporters.get(0) :
             new CombinedResultReporter(resultReporters);
 
+        File progressStats = new File(DEFAULT_PROGRESS_STATS_NAME);
+        if (cmd.hasOption("stats")) {
+            progressStats = new File(cmd.getOptionValue("stats"));
+        }
+        LOGGER.error("progress stats will be written to {}",progressStats.getAbsolutePath());
+        ProgressReporter progressReporter = new ProgressReporter(progressStats); // TODO make configurable
+
         // find artifact
         List<Artifact> allVersions = null;
         Artifact artifact = null;
@@ -158,10 +177,15 @@ public class Main {
             LOGGER.error("cannot fetch artifacts with matching classes from {}",gav,e);
         }
 
+        Set<Artifact> allMatches = matches.values().stream().flatMap(response -> response.getBody().getArtifacts().stream()).collect(Collectors.toSet());
+        progressReporter.artifactsProcessed(ProcessingStage.QUERY_RESULTS,allMatches);
+
         // consolidate results
-        LOGGER.info("{} potential matches found",matches.size());
+        LOGGER.info("{} potential matches found",allMatches.size());
         List<Artifact> consolidatedMatches = resultConsolidationStrategy.consolidate(matches);
         LOGGER.info("matched consolidated to {}",consolidatedMatches.size());
+
+        progressReporter.artifactsProcessed(ProcessingStage.CONSOLIDATED_QUERY_RESULTS,consolidatedMatches);
 
         // eliminate matches with dependency -- those are likely to be detected by existing checkers
         List<Artifact> candidates = new ArrayList<>();
@@ -186,7 +210,7 @@ public class Main {
         LOGGER.info("{} potential matches have declared dependency on {}:{}, will be excluded from further analysis",matchesWithDependency.get(),artifact.getGroupId(),artifact.getArtifactId());
         LOGGER.info("{} potential matches detected without declared dependency on {}:{}, will be analysed for clones",matchesWithoutDependency.get(),artifact.getGroupId(),artifact.getArtifactId());
         LOGGER.info("dependency analysis failed for {} artifacts",matchesWhereDependencyAnalysisFailed.get());
-
+        progressReporter.artifactsProcessed(ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE,candidates);
 
         // run clone detection
         AtomicInteger countMatchesAnalysed = new AtomicInteger();
@@ -201,12 +225,10 @@ public class Main {
 
         // see whether vulnerability verification is available
         Path verificationProjectTemplateFolder = null;
-        boolean isValidVerificationProjectTemplate = false;
         if (cmd.hasOption("vulnerabilitydemo")) {
             verificationProjectTemplateFolder = Path.of(cmd.getOptionValue("vulnerabilitydemo"));
             try {
                 checkVerificationProject(verificationProjectTemplateFolder);
-                isValidVerificationProjectTemplate = true;
                 LOGGER.info("vulnerability verification project is not valid");
             }
             catch (Exception x) {
@@ -254,7 +276,12 @@ public class Main {
         }
         LOGGER.info("verification projects will be use version {}",verificationProjectVersion);
 
-        // filter matches -- only
+
+        // sets mainly used to produce stats later
+        Set<Artifact> cloneDetected = new HashSet<>();
+        Set<Artifact> compiledSuccessfully = new HashSet<>();
+        Set<Artifact> testedSuccessfully = new HashSet<>();
+        Set<Artifact> shaded = new HashSet<>();
 
         for (Artifact match:candidates) {
             countMatchesAnalysed.incrementAndGet();
@@ -277,6 +304,7 @@ public class Main {
 
                     // TODO abstract threshold
                     if (cloneAnalysesResults.size() > 10) {
+                        cloneDetected.add(match);
                         LOGGER.info("generating project to verifify vulnerability for " + match);
                         String verificationProjectArtifactName = match.toString().replace(":", "__");
                         LOGGER.info("\tgroupId: " + verificationProjectGroupName);
@@ -297,9 +325,13 @@ public class Main {
                                 testEnviron
                         );
                         packagesHaveChangedInClone = result.isRenamedImports();
+                        if (packagesHaveChangedInClone) {
+                            shaded.add(match);
+                        }
 
                         if (result.isCompiled()) {
                             state = ResultReporter.VerificationState.COMPILED;
+                            compiledSuccessfully.add(match);
                         }
                         if (result.isTested()) { // override
                             state = ResultReporter.VerificationState.TESTED;
@@ -328,7 +360,7 @@ public class Main {
 
 
                             if (testsSucceeded) {
-
+                                testedSuccessfully.add(match);
                                 Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(verificationProjectArtifactName);
                                 LOGGER.info("\tmoving verified project folder from {} to {}", verificationProjectFolderStaged, verificationProjectFolderFinal);
                                 MVNProjectCloner.moveMvnProject(verificationProjectFolderStaged, verificationProjectFolderFinal);
@@ -367,21 +399,18 @@ public class Main {
             }
         }
 
+        progressReporter.artifactsProcessed(ProcessingStage.CLONE_DETECTED,cloneDetected);
+        progressReporter.artifactsProcessed(ProcessingStage.POC_INSTANCE_COMPILED,compiledSuccessfully);
+        progressReporter.artifactsProcessed(ProcessingStage.POC_INSTANCE_TESTED,testedSuccessfully);
+        progressReporter.artifactsProcessed(ProcessingStage.POC_INSTANCE_TESTED_SHADED, Sets.intersection(testedSuccessfully,shaded));
 
-//        // if verificationProjectInstancesFolderFinal exists, copy sh scripts to run sca tools
-        // TODO needs to be be fixed to run for scripts packed in the jar
-//        for (String scaScript:SCA_SCRIPTS) {
-//            Path path = Path.of(scaScript);
-//            try {
-//                if (!Files.isDirectory(path) && path.toString().endsWith(".sh")) {
-//                    Path dest = verificationProjectInstancesFolderFinal.resolve(path.getName(path.getNameCount() - 1));
-//                    Files.copy(path, dest, StandardCopyOption.REPLACE_EXISTING);
-//                    LOGGER.info("copied SCA script from {} to {}", path, dest);
-//                }
-//            } catch (IOException e) {
-//                LOGGER.error("error collecting and copying sca scripts", e);
-//            }
-//        }
+        try {
+            progressReporter.endReporting();
+            LOGGER.info("finished progress reporting, results written to {}",progressReporter.getOutput().getAbsolutePath());
+        }
+        catch (IOException x) {
+            LOGGER.error("error finishing progress reporting",x);
+        }
 
         try {
             resultReporter.endReporting(artifact);

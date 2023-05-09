@@ -1,0 +1,198 @@
+package nz.ac.wgtn.shadedetector.resultanalysis;
+
+import com.google.common.base.Preconditions;
+import nz.ac.wgtn.shadedetector.cveverification.ASTUtils;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * Utility to gather results from processing and generate a summary tex report.
+ * Assumes that the project naming conventions are used where a project name is a GAV, with group / id / version
+ * separated by "__".
+ * @author jens dietrich
+ */
+public class ReportResultsByCVE {
+
+
+    static class Record {
+        String cve = null;
+        Map<String,Set<String>> artifactVersionMap = new TreeMap<>(); //#
+        Map<String,Integer> artifactShadedVersionsCount = new HashMap<>(); //#
+
+        @Override
+        public String toString() {
+            return "Record{" +
+                "cve='" + cve + '\'' +
+                '}';
+        }
+    }
+
+    public static void main (String[] args) throws IOException {
+
+        Preconditions.checkArgument(args.length==3,"three arguments required -- folder with povs, folder with cloned povs, report name");
+
+        File ORIGINAL = new File(args[0]);
+        File FINAL = new File(args[1]);
+        File OUT_VULNERABLE_ARTIFACTS = new File(args[2]);
+
+        Preconditions.checkArgument(FINAL.exists());
+        Preconditions.checkArgument(ORIGINAL.exists());
+
+        List<String> cves = Stream.of(FINAL.listFiles())
+            .filter(f -> f.getName().startsWith("CVE-"))
+            .filter(f -> f.isDirectory())
+            .filter(f -> !f.isHidden())
+            .map(f -> f.getName())
+            .sorted(String::compareTo)
+            .collect(Collectors.toList());
+
+        List<Record> records = new ArrayList<>();
+        for (String cve:cves) {
+            System.out.println("Analysing " + cve);
+
+            Record record = new Record();
+            record.cve = cve;
+
+            File cveFinalFolder = new File(FINAL,cve);
+            Preconditions.checkArgument(cveFinalFolder.exists());
+
+            Set<String> tested = Stream.of(cveFinalFolder.listFiles())
+                .filter(f -> f.isDirectory())
+                .filter(f -> !f.isHidden())
+                .map(f -> f.getName())
+                .filter(n -> n.contains("__"))
+                .collect(Collectors.toSet());
+
+            File original = new File(ORIGINAL,cve);
+            Preconditions.checkState(original.exists());
+
+            Set<String> shaded = Stream.of(cveFinalFolder.listFiles())
+                .filter(f -> f.isDirectory())
+                .filter(f -> !f.isHidden())
+                .filter(f -> f.getName().contains("__"))
+                .filter(f -> haveImportsChanged(original.toPath(),f.toPath()))
+                .map(f -> f.getName())
+                .collect(Collectors.toSet());
+
+            tested.stream().forEach(a ->
+                {
+                    String kernel = removeVersionFromProjectName(a);
+                    kernel = kernel.replace("__",":");
+                    String version = getVersionFromProjectName(a);
+                    Set<String> versions = record.artifactVersionMap.computeIfAbsent(kernel,k -> new TreeSet<>());
+                    versions.add(version);
+                }
+            );
+
+            tested.stream().forEach(a ->
+                {
+                    String kernel = removeVersionFromProjectName(a);
+                    kernel = kernel.replace("__",":");
+                    int count = record.artifactShadedVersionsCount.computeIfAbsent(kernel,a2 -> 0);
+                    if (shaded.contains(a)) {
+                        count = count+1;
+                    }
+                    record.artifactShadedVersionsCount.put(kernel,count);
+                }
+            );
+
+            System.out.println(record);
+            records.add(record);
+
+        }
+
+        System.out.println("creating vulnerable artifacts report in " + OUT_VULNERABLE_ARTIFACTS.getAbsolutePath());
+
+        try (PrintWriter out = new PrintWriter(new FileWriter(OUT_VULNERABLE_ARTIFACTS))) {
+            out.println("\\begin{table*}");
+            out.println("\t\\begin{tabular}{|lll|}");
+            out.println("\t\\hline");
+            out.println(asLatexTableRow(
+                "groupId:versionId",
+                "versions",
+                "shaded"
+            ));
+
+            for  (Record record:records) {
+                out.println("\t\\hline");
+                out.println("\t\\multicolumn{3}{|c|}{" + record.cve+ "} \\\\");
+                out.println("\t\\hline");
+                for (String ga:record.artifactVersionMap.keySet()) {
+                    out.println(asLatexTableRow(
+                        latexize(ga),
+                        record.artifactVersionMap.get(ga).size(),
+                        //  latexize(record.artifactVersionMap.get(ga).stream().collect(Collectors.joining(","))),
+                        record.artifactShadedVersionsCount.get(ga) == 0 ? "no" :
+                                (record.artifactShadedVersionsCount.get(ga) == record.artifactVersionMap.get(ga).size() ? "yes" : "(yes)")
+                    ));
+                }
+
+            }
+            out.println("\t\\hline");
+            out.println("\t\\end{tabular}");
+            out.println("\t\\caption{\\label{tab:vulnerableartifacts}Vulnerable Artifacts Detected}");
+            out.println("\\end{table*}");
+        }
+
+    }
+
+
+    private static String asLatexTableRow(Object... cellValues) {
+        return Stream.of(cellValues)
+            .map(obj -> obj.toString())
+            .collect(Collectors.joining("&","\t"," \\\\"));
+    }
+
+    static String removeVersionFromProjectName (String projectName) {
+        String name = projectName.substring(0,projectName.lastIndexOf("__"));
+        assert name.contains("__"); // between group and version
+        assert name.indexOf("__") == name.lastIndexOf("__");
+        return name;
+    }
+
+    static String latexize(String s) {
+        return s.replace("_", "\\_")
+            .replace(":", ":\\-")  // help hyphenation
+            .replace(".",".\\-");
+    }
+
+    static String getVersionFromProjectName (String projectName) {
+        return projectName.substring(projectName.lastIndexOf("__")+2);
+    }
+
+    static boolean haveImportsChanged(Path project1, Path project2)  {
+
+        try {
+            List<Path> sources = Files.walk(project1)
+                .filter(file -> !Files.isDirectory(file))
+                .filter(file -> file.toFile().getName().endsWith(".java"))
+                .collect(Collectors.toList());
+
+            for (Path src : sources) {
+                Path src2 = project2.resolve(project1.relativize(src));
+                assert Files.exists(src2);
+
+                // System.out.println("comparing imports " + src + " and " + src2);
+                Set<String> imports1 = ASTUtils.getImports(src).stream().collect(Collectors.toSet());
+                Set<String> imports2 = ASTUtils.getImports(src2).stream().collect(Collectors.toSet());
+
+                if (!imports1.equals(imports2)) {
+                    return true;
+                }
+            }
+        }
+        catch (IOException x) {
+            x.printStackTrace();
+        }
+
+        return false;
+    }
+}

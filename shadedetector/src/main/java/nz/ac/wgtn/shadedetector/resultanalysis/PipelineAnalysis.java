@@ -5,6 +5,7 @@ import nz.ac.wgtn.shadedetector.Main;
 import nz.ac.wgtn.shadedetector.resultreporting.ProgressReporter;
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -24,7 +25,7 @@ public class PipelineAnalysis {
         System.out.println("creating summary report in " + OUT_SUMMARY.getAbsolutePath());
         try (PrintWriter out = new PrintWriter(new FileWriter(OUT_SUMMARY))) {
             out.println("\\begin{table*}");
-            out.println("\t\\begin{tabular}{|l|p{1.6cm}p{1.6cm}p{1.6cm}p{1.6cm}p{1.6cm}p{1.6cm}|}");
+            out.println("\t\\begin{tabular}{|l|p{2cm}p{2cm}p{2cm}p{2cm}p{2cm}p{2cm}|}");
             out.println("\t\\hline");
             out.println(asLatexTableRow(
     "vulnerability",
@@ -37,8 +38,12 @@ public class PipelineAnalysis {
             ));
             out.println("\t\\hline");
 
-
             // BODY of table
+
+            // counters for summary in last row
+            Map<Main.ProcessingStage,Integer> versionedCounters = new HashMap<>();
+            Map<Main.ProcessingStage,Integer> unversionedCounters = new HashMap<>();
+
             Stream.of(SUMMARY_FOLDER.listFiles())
                 .sorted()
                 .filter(f -> f.getName().startsWith("CVE-"))
@@ -52,38 +57,59 @@ public class PipelineAnalysis {
                     }
                     out.println(asLatexTableRow(
                         f.getName().replace(".properties",""),
-                        getValue(properties, Main.ProcessingStage.QUERY_RESULTS),
-                        getValue(properties, Main.ProcessingStage.CONSOLIDATED_QUERY_RESULTS),
-                        getValue(properties, Main.ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE),
-                        getValue(properties, Main.ProcessingStage.CLONE_DETECTED),
-                        getValue(properties, Main.ProcessingStage.POC_INSTANCE_COMPILED),
-                        getValue(properties, Main.ProcessingStage.POC_INSTANCE_TESTED)
+                        getValue(properties, Main.ProcessingStage.QUERY_RESULTS,versionedCounters,unversionedCounters),
+                        getValue(properties, Main.ProcessingStage.CONSOLIDATED_QUERY_RESULTS,versionedCounters,unversionedCounters),
+                        getValue(properties, Main.ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE,versionedCounters,unversionedCounters),
+                        getValue(properties, Main.ProcessingStage.CLONE_DETECTED,versionedCounters,unversionedCounters),
+                        getValue(properties, Main.ProcessingStage.POC_INSTANCE_COMPILED,versionedCounters,unversionedCounters),
+                        getValue(properties, Main.ProcessingStage.POC_INSTANCE_TESTED,versionedCounters,unversionedCounters)
                     ));
                 });
 
             out.println("\t\\hline");
+
+            out.println(asLatexTableRow(
+                    "(sum)",
+                    getAggregatedValue(Main.ProcessingStage.QUERY_RESULTS,versionedCounters,unversionedCounters),
+                    getAggregatedValue(Main.ProcessingStage.CONSOLIDATED_QUERY_RESULTS,versionedCounters,unversionedCounters),
+                    getAggregatedValue(Main.ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE,versionedCounters,unversionedCounters),
+                    getAggregatedValue(Main.ProcessingStage.CLONE_DETECTED,versionedCounters,unversionedCounters),
+                    getAggregatedValue(Main.ProcessingStage.POC_INSTANCE_COMPILED,versionedCounters,unversionedCounters),
+                    getAggregatedValue(Main.ProcessingStage.POC_INSTANCE_TESTED,versionedCounters,unversionedCounters)
+            ));
+            out.println("\t\\hline");
+
             out.println("\t\\end{tabular}");
-            out.println("\t\\caption{\\label{tab:pipeline}Processed Artifacts at each stage, numbers in brackets are classes of artifact with matching group and artifact ids (i.e., versions are ignored)}");
+            out.println("\t\\caption{\\label{tab:pipeline}Processed Artifacts at each stage, numbers in brackets are classes of artifacts with the same group and artifact id (i.e., versions are ignored)}");
             out.println("\\end{table*}");
         }
-
-
     }
 
-    private static String getValue(Properties properties, Main.ProcessingStage stage) {
+    private static String getValue(Properties properties, Main.ProcessingStage stage,Map<Main.ProcessingStage,Integer> versionedCounters,Map<Main.ProcessingStage,Integer> unversionedCounters) {
         String value = "?";
         String v = properties.getProperty(stage.name());
         if (v!=null) {
             int i = Integer.valueOf(v);
+            final int j = i; // final for lambda
+            versionedCounters.compute(stage,(k, oldValue) ->  oldValue==null ? j : j+oldValue);
             value = String.format("%,d", i);
 
             v = properties.getProperty(stage.name()+ ProgressReporter.UNVERSIONED_KEY_EXTENSION);
             if (v!=null) {
                 i = Integer.valueOf(v);
+                final int l = i; // final for lambda
+                unversionedCounters.compute(stage,(k, oldValue) ->  oldValue==null ? l : l+oldValue);
                 value = value + " (" + String.format("%,d", i) + ')';
             }
         }
         return value;
+    }
+
+    private static String getAggregatedValue(Main.ProcessingStage stage,Map<Main.ProcessingStage,Integer> versionedCounters,Map<Main.ProcessingStage,Integer> unversionedCounters) {
+        return String.format("%,d", versionedCounters.get(stage))
+            + " ("
+            + String.format("%,d", unversionedCounters.get(stage))
+            + ')';
     }
 
     private static String asLatexTableRow(Object... cellValues) {

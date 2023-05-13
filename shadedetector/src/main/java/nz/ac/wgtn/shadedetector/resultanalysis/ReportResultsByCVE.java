@@ -10,6 +10,10 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -17,10 +21,13 @@ import java.util.stream.Stream;
  * Utility to gather results from processing and generate a summary tex report.
  * Assumes that the project naming conventions are used where a project name is a GAV, with group / id / version
  * separated by "__".
+ * Note that this will try to read a file masked-artifacts.txt that contains a list of artifacts (GAV regex)
+ * to mask in the generated report.
  * @author jens dietrich
  */
 public class ReportResultsByCVE {
 
+    public static final String MASK_LIST = "masked-artifacts.txt";
 
     static class Record {
         String cve = null;
@@ -38,6 +45,17 @@ public class ReportResultsByCVE {
     public static void main (String[] args) throws IOException {
 
         Preconditions.checkArgument(args.length==3,"three arguments required -- folder with povs, folder with cloned povs, report name");
+
+        File maskListDef = new File(MASK_LIST);
+        Preconditions.checkState(maskListDef.exists(),"mask list definition not found (can use empty file): " + maskListDef);
+        Set<Pattern> maskList = Files.readAllLines(maskListDef.toPath()).stream()
+            .filter(line -> !line.trim().startsWith("#")) // remove comments
+            .map(line -> Pattern.compile(line.trim()))
+            .collect(Collectors.toSet());
+
+        Predicate<String> shouldMask = gav -> maskList.stream().anyMatch(pattern -> pattern.matcher(gav).matches());
+        AtomicInteger maskArtifactCounter = new AtomicInteger();
+
 
         File ORIGINAL = new File(args[0]);
         File FINAL = new File(args[1]);
@@ -127,7 +145,7 @@ public class ReportResultsByCVE {
                 out.println("\t\\hline");
                 for (String ga:record.artifactVersionMap.keySet()) {
                     out.println(asLatexTableRow(
-                        latexize(ga),
+                        latexize(shouldMask.test(ga)?"<masked-artifact-" + maskArtifactCounter.incrementAndGet() + ">":ga),
                         record.artifactVersionMap.get(ga).size(),
                         //  latexize(record.artifactVersionMap.get(ga).stream().collect(Collectors.joining(","))),
                         record.artifactShadedVersionsCount.get(ga) == 0 ? "no" :

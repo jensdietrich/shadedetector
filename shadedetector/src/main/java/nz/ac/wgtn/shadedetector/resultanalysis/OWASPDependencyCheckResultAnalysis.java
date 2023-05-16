@@ -29,6 +29,8 @@ public class OWASPDependencyCheckResultAnalysis implements SCAResultAnalysis {
             JsonElement root = JsonParser.parseReader(reader);
             JsonArray dependencies = root.getAsJsonObject().get("dependencies").getAsJsonArray();
             for (JsonElement dependency:dependencies) {
+                if (!dependency.getAsJsonObject().has("vulnerabilities"))
+                    continue;
                 JsonArray vulnerabilities = dependency.getAsJsonObject().getAsJsonObject().get("vulnerabilities").getAsJsonArray();
                 for (JsonElement vulnerability:vulnerabilities) {
                     String cve = vulnerability.getAsJsonObject().get("name").getAsString();

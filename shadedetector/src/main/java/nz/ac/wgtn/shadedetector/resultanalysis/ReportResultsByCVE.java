@@ -8,7 +8,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Files;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -29,6 +31,11 @@ public class ReportResultsByCVE {
 
     public static final String MASK_LIST = "masked-artifacts.txt";
 
+    // CVEs we ignore for reporting in paper -- for instance, if they are redundant with other CVEs
+    public static Set<String> IGNORED_CVEs = Set.of(
+            "CVE-2015-7501"   // report almost identical CVE-2015-6420 instead !
+    );
+
     static class Record {
         String cve = null;
         Map<String,Set<String>> artifactVersionMap = new TreeMap<>(); //#
@@ -44,7 +51,7 @@ public class ReportResultsByCVE {
 
     public static void main (String[] args) throws IOException {
 
-        Preconditions.checkArgument(args.length==3,"three arguments required -- folder with povs, folder with cloned povs, report name");
+        Preconditions.checkArgument(args.length==4,"three arguments required -- folder with povs, folder with cloned povs, report file, folder where artifact lists are exported to (one file by CVE)");
 
         File maskListDef = new File(MASK_LIST);
         Preconditions.checkState(maskListDef.exists(),"mask list definition not found (can use empty file): " + maskListDef);
@@ -60,15 +67,19 @@ public class ReportResultsByCVE {
         File ORIGINAL = new File(args[0]);
         File FINAL = new File(args[1]);
         File OUT_VULNERABLE_ARTIFACTS = new File(args[2]);
+        File CVE_OUT_FOLDER = new File(args[3]);
 
         Preconditions.checkArgument(FINAL.exists());
         Preconditions.checkArgument(ORIGINAL.exists());
+        Preconditions.checkArgument(CVE_OUT_FOLDER.exists());
+
 
         List<String> cves = Stream.of(FINAL.listFiles())
             .filter(f -> f.getName().startsWith("CVE-"))
             .filter(f -> f.isDirectory())
             .filter(f -> !f.isHidden())
             .map(f -> f.getName())
+            .filter(n -> !IGNORED_CVEs.contains(n))
             .sorted(String::compareTo)
             .collect(Collectors.toList());
 
@@ -158,6 +169,20 @@ public class ReportResultsByCVE {
             out.println("\t\\end{tabular}");
             out.println("\t\\caption{\\label{tab:vulnerableartifacts}Vulnerable Artifacts Detected}");
             out.println("\\end{table*}");
+        }
+
+
+        // print artifact ids by CVE
+        for  (Record record:records) {
+            File file = new File(CVE_OUT_FOLDER,record.cve + ".txt");
+            List lines = new ArrayList();
+            for (String artifact:record.artifactVersionMap.keySet()) {
+                for (String version:record.artifactVersionMap.get(artifact)) {
+                    lines.add(artifact + ":" + version);
+                }
+            }
+            Files.write(file.toPath(),lines, StandardOpenOption.CREATE,StandardOpenOption.TRUNCATE_EXISTING);
+            System.out.println("list of vulnerable artifacts written to " + file.getAbsolutePath());
         }
 
     }

@@ -13,7 +13,6 @@ import org.apache.commons.cli.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeroturnaround.exec.ProcessResult;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;

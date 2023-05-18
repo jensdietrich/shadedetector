@@ -72,6 +72,11 @@ public class FetchResources {
             throw new IllegalStateException("no source code found for artifact " + artifact.getId());
         }
         Path cached = getCachedPOM(gav,".pom");
+        return fetchPOM(gav);
+    }
+
+    public static Path fetchPOM (GAV gav) throws IOException {
+        Path cached = getCachedPOM(gav,".pom");
         return fetch(gav,cached,".pom");
     }
 

@@ -5,8 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
@@ -20,7 +18,6 @@ import java.util.function.Predicate;
  * @author jens dietrich
  */
 public class POMAnalysis {
-
 
     private static Logger LOGGER = LoggerFactory.getLogger(POMAnalysis.class);
 
@@ -96,54 +93,71 @@ public class POMAnalysis {
         return MVNDependency.from(mergedList);
     }
 
-    public static boolean shadePluginIncludes(Artifact artifact,String groupId,String artifactId) throws Exception {
+    public static boolean shadePluginReferences(Artifact artifact, String groupId, String artifactId) throws Exception {
         Path pom = FetchResources.fetchPOM(artifact);
-        return shadePluginIncludes(pom,groupId,artifactId);
+        return shadePluginReferences(pom,groupId,artifactId);
     }
 
 
         /**
-         * Check whether the shade plugin includes packages with any of the prefixes passed as argument.
+         * We are looking here for explicit references, not just wildcard patterns including artifacts we are dependent on.
+         * I.e. this is not to confirm which artifacts are included, but an additional source of information for
+         * artifacts a pom depends on which were missed in the dependency analysis.
          */
-    public static boolean shadePluginIncludes(Path pom,String groupId,String artifactId) throws Exception {
-        NodeList nodes = Utils.evalXPath(pom.toFile(), "/project/build/plugins/plugin[artifactId='maven-shade-plugin']//includes/include");
+    public static boolean shadePluginReferences(Path pom, String groupId, String artifactId) throws Exception {
+
+        //  path starts with // -- plugin might be defined inside profiles
+        NodeList nodes = Utils.evalXPath(pom.toFile(), "//plugins/plugin[artifactId='maven-shade-plugin']//includes/include");
         for (int i=0;i<nodes.getLength();i++) {
             String value = nodes.item(i).getTextContent();
-            // glob pattern
-            if (value.contains(":")) {
-                String[] tokens = value.split(":");
-                PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:"+tokens[0]);
-                boolean groupMatches = matcher.matches(Path.of(groupId));
-                if (groupMatches) {
-                    matcher = FileSystems.getDefault().getPathMatcher("glob:" + tokens[1]);
-                    boolean artifactMatches = matcher.matches(Path.of(artifactId));
-                    if (artifactMatches) {
-                        return true;
-                    }
-                }
-            }
-            // package prefix only, used as in org.yaml.**
-            else if (value.endsWith(".**")) {
-                String prefix = value.replace(".**","");
-                if (groupId.startsWith(prefix)) {
-                    return true;
-                }
-            }
-
-            else {
-                LOGGER.warn("Unexpected maven-shade-plugin include: {}",value);
+            int groupIdIndex = value.indexOf(groupId);
+            int artifactIdIndex = value.indexOf(artifactId);
+            if (groupIdIndex>-1 && artifactIdIndex>groupIdIndex) {
+                return true;
             }
         }
         return false;
     }
 
     public static boolean references(Path pom,String groupId,String artifactId) throws Exception {
-        return hasDependency(pom,groupId,artifactId) || shadePluginIncludes(pom,groupId,artifactId);
+        return hasDependency(pom,groupId,artifactId) || shadePluginReferences(pom,groupId,artifactId);
+    }
+
+    public static Path getParentPom (Path pom,GAV childGAV) throws Exception {
+        String parentGroupId = getElementText(pom,"/project/parent/groupId");
+        if (parentGroupId==null) {
+            return null;
+        }
+        String parentArtifactId = getElementText(pom,"/project/parent/artifactId");
+        if (parentArtifactId==null) {
+            return null;
+        }
+        String parentVersion = getElementText(pom,"/project/parent/version");
+        if (parentVersion==null) {
+            return null;
+        }
+        else {
+            // if this is a variable, use same version as child
+            if (parentVersion.startsWith("${")) {
+                parentVersion = childGAV.getVersion();
+            }
+        }
+
+        GAV parentGAV = new GAV(parentGroupId, parentArtifactId, parentVersion);
+        LOGGER.info("trying to fetch parent pom {} for child {}",parentGAV.asString(),childGAV.asString());
+        return FetchResources.fetchPOM(parentGAV);
     }
 
     public static boolean references(Artifact artifact,String groupId,String artifactId) throws Exception {
         Path pom = FetchResources.fetchPOM(artifact);
-        return hasDependency(pom,groupId,artifactId) || shadePluginIncludes(pom,groupId,artifactId) || hasGroupAndArtifactId(pom,groupId,artifactId);
+        boolean hasReference =  hasDependency(pom,groupId,artifactId) || shadePluginReferences(pom,groupId,artifactId) || hasGroupAndArtifactId(pom,groupId,artifactId);
+        if (!hasReference) {
+            Path parentPOM = getParentPom(pom,artifact.asGAV());
+            if (parentPOM != null) {
+                hasReference = hasDependency(parentPOM, groupId, artifactId) || shadePluginReferences(parentPOM, groupId, artifactId) || hasGroupAndArtifactId(parentPOM, groupId, artifactId);
+            }
+        }
+        return hasReference;
     }
 
 }

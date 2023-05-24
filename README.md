@@ -64,9 +64,9 @@ Arguments:
 
 Several strategies are implemented as pluggable services. I.e. strategies are described via interfaces, with service providers declared in library manifests, see for instance [src/main/resources/META_INF/services](src/main/resources/META_INF/services) for the onboard default providers. Each provider has a unqique name that can be used as an argument value in the CLI. All interfaces are defined in `nz.ac.wgtn.shadedetector`. The service is selected by a factory `nz.ac.wgtn.shadedetector.<Service>Factory` that also defined what is being used as the default service provider. 
 
-| Service     | Interface   | CLI Argument(s) | Description |
-| ----------- | ----------- | -----------     | ----------- |
-| result reporter      | `ResultReporter`  | `-o`,`-o1`,`-o2`,`-o2` | consumes analysis results, e.g. to generate reports|
-| class selector       | `ClassSelector`  | `-s` | selects the classes from the input artifact to be used to query Maven for potenial clones |
-| clone detector       | `CloneDetector`  | `-c` | the clone detector used to compare two source code files (from the input artifact and a potenial clone) |
-| consolidation strategy | `ArtifactSearchResultConsolidationStrategy` | `-r` | the strategy used to consolidate artifact sets obtained by REST queries for a single class into a single set |  
+| Service     | Interface   | CLI Argument(s) | Description | Default |
+| ----------- | ----------- | -----------     | ----------- |  ----------- |
+| result reporter      | `ResultReporter`  | `-o`,`-o1`,`-o2`,`-o2` | consumes analysis results, e.g. to generate reports | report results using standard *log4j* logging |
+| class selector       | `ClassSelector`  | `-s` | selects the classes from the input artifact to be used to query Maven for potenial clones | pick 10 classes with the highest number of camel case tokens (i.e. complex class names) |
+| clone detector       | `CloneDetector`  | `-c` | the clone detector used to compare two source code files (from the input artifact and a potenial clone) | custom AST-based clone detection that ignores comments and package names in type references | 
+| consolidation strategy | `ArtifactSearchResultConsolidationStrategy` | `-r` | the strategy used to consolidate artifact sets obtained by REST queries for a single class into a single set | an artifact must appear in at least two sets | 

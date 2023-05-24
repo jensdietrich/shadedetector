@@ -4,7 +4,7 @@
 
 The tools takes the coordinates of Maven artifact (**GAV** - **G**roupId + **A**rtifactId + **V**ersion) and a testable proof-of-vulnerability (TPOV) project as input, 
 and will infer and report a list of artifacts that are cloning / shading the input artifact, and are also exposed to the same vulnerability. For each such artifact,
-a POV is constructed. 
+a TPOV is constructed from the original TPOV, proving the precense of the vulnerability. 
 
 ## Testable Proof-of-vulnerability Projects (TPOV)
 
@@ -14,8 +14,8 @@ TPOVs make a vulnerability testable. Each TPOV has the following structure:
 
 1. a TPOV is a simple (i.e. non-modular) Maven project
 2. a TPOV has a dependency on the vulnerable artifact. 
-3. a TPOV has a test-scope dependency on JUnit5,  other dependencies should be avoided or minimised
-4. a TPOV has one or more tests that succeed if and only if the vulnerability can be exploited -- i.e. the vulnerability becomes the test oracle. Those tests may be the only classes defined in a POV.
+3. a TPOV has a test-scope dependency on JUnit5,  other dependencies should be avoided or minimised.
+4. a TPOV has one or more tests that succeed if and only if the vulnerability can be exploited -- i.e. the vulnerability becomes the test oracle. Those tests may be the only classes defined in a TPOV.
 5. a TPOV test may declare dependencies on certain OS or JRE versions using standard JUnit annotations such as  `@EnabledOnOs` or `@EnabledOnJre`
 6. sources in a TPOV should not directly use fully classified class names, instead, imports shopuld be used (this is to aid the tool to automatically refactor dependencies) 
 
@@ -58,7 +58,16 @@ Arguments:
  -vv,--vulnerabilityversion <arg>           the version used in the projects generated to verify the presence of a vulnerability (default is "0.0.1")
          
  ```
+ 
+## Setting the Environment
 
+With `-env` an environment can be set to be used to build / test the TPOVs. If TPOV tests require a Java version different from the one used to run the tool, this can be used to set `JAVA_HOME` to point to a partiocular version of the Java Development Kit (JDK, not just JRE as TPOVs are compiled).
+
+## Known Issues
+
+In principe the tool can be run withj Java 11. However, we did encounter rare cases where the analysis gets stuck and eventually fails with an `OutOfMemoryError`. This seems to be caused by a [bug in the zip file system in Java 11](https://bugs.openjdk.org/browse/JDK-7143743). We recommend using Java 17 if this is a problem. 
+
+It is also possible to added artifacts to `nz.ac.wgtn.shadedetector.Blacklist` to exclude them from the analysis. 
 
 ## Customising / Extending
 

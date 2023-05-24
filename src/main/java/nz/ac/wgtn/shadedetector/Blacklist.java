@@ -1,7 +1,5 @@
 package nz.ac.wgtn.shadedetector;
 
-import java.util.Set;
-
 /**
  * List of artifacts (GAVSs) for which the analysis is problematic.
  * TODO: move into file.

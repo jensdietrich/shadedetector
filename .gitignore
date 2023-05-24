@@ -18,3 +18,4 @@ shadedetector/results
 masked-artifacts.txt
 results
 analyse-*.sh
+target

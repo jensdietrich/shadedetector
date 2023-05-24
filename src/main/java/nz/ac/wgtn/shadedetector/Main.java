@@ -468,6 +468,7 @@ public class Main {
         String header = "Arguments:\n\n";
         String footer = "\nPlease report issues at https://github.com/jensdietrich/shading-study/issues/";
         HelpFormatter formatter = new HelpFormatter();
+        formatter.setWidth(150);
         formatter.printHelp("java -cp <classpath> Main", header, options, footer, true);
     }
 }

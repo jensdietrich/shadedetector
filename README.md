@@ -1,4 +1,4 @@
-# ShadeDetector -- A Tool to Detect Vulnerabilities in Clones and Shaded Components. 
+# ShadeDetector -- A Tool to Detect Vulnerabilities in Cloned or Shaded Components. 
 
 ## Overview 
 

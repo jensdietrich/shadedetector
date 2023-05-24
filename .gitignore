@@ -16,3 +16,5 @@ out**
 main.out
 shadedetector/results
 masked-artifacts.txt
+results
+analyse-*.sh

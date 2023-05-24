@@ -1,6 +1,6 @@
 ## Mising Sources
 
 
-org.jruby.extras:jvyamlb:0.1.3 and several other versions -- source code is missing. When analysing CVE-2022-38749. 
+For `org.jruby.extras:jvyamlb:0.1.3` and several other versions of this artifact the sources are missing. I.e. the REST request fail. This is encountered when analysing `CVE-2022-38749`. 
 
 

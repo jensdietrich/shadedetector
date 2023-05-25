@@ -79,3 +79,12 @@ Several strategies are implemented as pluggable services. I.e. strategies are de
 | class selector       | `ClassSelector`  | `-s` | selects the classes from the input artifact to be used to query Maven for potenial clones | pick 10 classes with the highest number of camel case tokens (i.e. complex class names) |
 | clone detector       | `CloneDetector`  | `-c` | the clone detector used to compare two source code files (from the input artifact and a potenial clone) | custom AST-based clone detection that ignores comments and package names in type references | 
 | consolidation strategy | `ArtifactSearchResultConsolidationStrategy` | `-r` | the strategy used to consolidate artifact sets obtained by REST queries for a single class into a single set | an artifact must appear in at least two sets | 
+
+Some services can be customised further by setting properties (corresponding to bean properties in the respective service provider classes). For instance, consider the following arguments setting up output reporting:
+
+```
+  -o csv.details?dir=results/details/CVE-2022-45688-commonstext -o1 csv.summary?file=results/summary-CVE-2022-45688-commonstext.csv
+```
+
+This sets up two reporters named `csv.details` (corresponding to `nz.ac.wgtn.shadedetector.resultreporting.CSVDetailedResultReporter`) and `csv.summary` (corresponding to `nz.ac.wgtn.shadedetector.resultreporting.CSVSummaryResultReporter`), respectively. This is followed by a configuration consisting of &-separated key-value pairs, setting properties of the respective instance. In this case, the files / folders where reports are to be generated are set.
+

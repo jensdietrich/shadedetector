@@ -30,7 +30,7 @@ public class FetchResourceTest {
         Cache.clearCache(FetchResources.SRC_CACHE_NAME);
 
         // load resources
-        Path versionsPath = Path.of(FetchResourceTest.class.getResource("/artifacts/org.apache.commons:commons-collections4.json").getFile());
+        Path versionsPath = Path.of(FetchResourceTest.class.getResource("/artifacts/org.apache.commons!commons-collections4.json").getFile());
         assertTrue(Files.exists(versionsPath));
         try (Reader reader = Files.newBufferedReader(versionsPath)) {
             ArtifactSearchResponse response = ArtifactSearch.parse(reader);

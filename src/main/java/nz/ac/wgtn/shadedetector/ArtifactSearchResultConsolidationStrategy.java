@@ -1,13 +1,11 @@
 package nz.ac.wgtn.shadedetector;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
- * Given search results by class name used by query, select the ones to proceed by some heuristics.
+ * Given search results by class name used by query, select the ones to proceed with by some heuristics.
  * Example: merge sets, use intersection, select all that occur in at least two result sets, etc.
  * @author jens dietrich
  */

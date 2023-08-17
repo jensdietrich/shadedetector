@@ -26,7 +26,7 @@ public class SyncReleaseFolders {
      */
     public static void main (String[] args) throws Exception {
 
-        Preconditions.checkState(args.length==2);
+        Preconditions.checkState(args.length==2,"two arguments required -- the original repo, and the one to sync (add/remove)");
 
         File repo1 = new File(args[0]);
         Preconditions.checkState(repo1.exists());

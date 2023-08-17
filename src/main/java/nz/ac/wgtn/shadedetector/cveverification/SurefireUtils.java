@@ -31,6 +31,7 @@ public class SurefireUtils {
             this.errorCount = errorCount;
             this.failureCount = failureCount;
             this.skippedCount = skippedCount;
+
             Preconditions.checkArgument(testCount >= (errorCount + failureCount + skippedCount));
         }
 
@@ -61,6 +62,25 @@ public class SurefireUtils {
         public int getSkippedCount() {
             return skippedCount;
         }
+
+        public boolean assertExpectedOutcome(TestSignal signal) {
+            Preconditions.checkState(getTestCount()>0);
+            Preconditions.checkArgument(signal!=null);
+            if (allTestsExecuted()) {
+                if (signal== TestSignal.FAIL) {
+                    return getFailureCount()==getTestCount();
+                }
+                else if (signal== TestSignal.ERROR) {
+                    return getErrorCount()==getTestCount();
+                }
+                else if (signal== TestSignal.PASS) {
+                    return getErrorCount()==0 && getFailureCount()==0;
+                }
+            }
+            return false;
+        }
+
+
 
 
         @Override

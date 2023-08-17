@@ -102,6 +102,100 @@ public class SurefireUtilsTest {
         assertFalse(results.allTestsSucceeded());
     }
 
+    @Test
+    public void testExpectedOutComeInconsistentState() {
+        assertThrows(IllegalArgumentException.class, () -> new SurefireUtils.TestResults(3,3,0,1));
+    }
 
+    @Test
+    public void testExpectedOutComeMustBeError1() {
+        SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,3,0,0);
+        assertTrue(results.assertExpectedOutcome(TestSignal.ERROR));
+    }
+
+    @Test
+    public void testExpectedOutComeMustBeError2() {
+        SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,2,0,1);
+        assertFalse(results.assertExpectedOutcome(TestSignal.ERROR));
+    }
+
+    @Test
+    public void testExpectedOutComeMustBeError3() {
+        SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,2,1,0);
+        assertFalse(results.assertExpectedOutcome(TestSignal.ERROR));
+    }
+
+    @Test
+    public void testExpectedOutComeMustBeError4() {
+        SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,2,0,0);
+        assertFalse(results.assertExpectedOutcome(TestSignal.ERROR));
+    }
+
+    @Test
+    public void testExpectedOutComeMustBeError5() {
+        SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,0,3,0);
+        assertFalse(results.assertExpectedOutcome(TestSignal.ERROR));
+    }
+
+
+    @Test
+    public void testExpectedOutComeMustBeFail1() {
+        SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,0,3,0);
+        assertTrue(results.assertExpectedOutcome(TestSignal.FAIL));
+    }
+
+    @Test
+    public void testExpectedOutComeMustBeFail2() {
+        SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,0,2,1);
+        assertFalse(results.assertExpectedOutcome(TestSignal.FAIL));
+    }
+
+    @Test
+    public void testExpectedOutComeMustBeFail3() {
+        SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,1,2,0);
+        assertFalse(results.assertExpectedOutcome(TestSignal.FAIL));
+    }
+
+    @Test
+    public void testExpectedOutComeMustBeFail4() {
+        SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,0,2,0);
+        assertFalse(results.assertExpectedOutcome(TestSignal.FAIL));
+    }
+
+    @Test
+    public void testExpectedOutComeMustBeFail5() {
+        SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,3,0,0);
+        assertFalse(results.assertExpectedOutcome(TestSignal.FAIL));
+    }
+
+    @Test
+    public void testExpectedOutComeMustBePass1() {
+        SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,0,0,0);
+        assertTrue(results.assertExpectedOutcome(TestSignal.PASS));
+    }
+
+    @Test
+    public void testExpectedOutComeMustBePass2() {
+        SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,0,0,1);
+        assertFalse(results.assertExpectedOutcome(TestSignal.PASS));
+    }
+
+    @Test
+    public void testExpectedOutComeMustBePass3() {
+        SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,1,0,0);
+        assertFalse(results.assertExpectedOutcome(TestSignal.PASS));
+    }
+
+    @Test
+    public void testExpectedOutComeMustBePass4() {
+        SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,0,1,0);
+        assertFalse(results.assertExpectedOutcome(TestSignal.PASS));
+    }
+
+    @Test
+    public void testExpectedOutComeMustBePass5() {
+        SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,3,0,0);
+        assertFalse(results.assertExpectedOutcome(TestSignal.PASS));
+    }
 
 }

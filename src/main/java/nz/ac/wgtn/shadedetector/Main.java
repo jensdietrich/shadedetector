@@ -3,10 +3,7 @@ package nz.ac.wgtn.shadedetector;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import nz.ac.wgtn.shadedetector.clonedetection.ImportTranslationExtractor;
-import nz.ac.wgtn.shadedetector.cveverification.MVNExe;
-import nz.ac.wgtn.shadedetector.cveverification.MVNProjectCloner;
-import nz.ac.wgtn.shadedetector.cveverification.POMUtils;
-import nz.ac.wgtn.shadedetector.cveverification.SurefireUtils;
+import nz.ac.wgtn.shadedetector.cveverification.*;
 import nz.ac.wgtn.shadedetector.resultreporting.CombinedResultReporter;
 import nz.ac.wgtn.shadedetector.resultreporting.ProgressReporter;
 import org.apache.commons.cli.*;
@@ -75,6 +72,9 @@ public class Main {
         options.addOption("env","testenvironment",true,"a property file defining environment variables used when running tests on generated projects used to verify vulnerabilities, for instance, this can be used to set the Java version");
         options.addOption("ps","stats",true,"the file to which progress stats will be written (default is \"" + DEFAULT_PROGRESS_STATS_NAME + "\"");
 
+        // TODO add auto option to get this from xshady metadata
+        options.addRequiredOption("sig","vulnerabilitysignal",true,"indicates the test signal indicating that the vulnerability is present, must be of one of \"error\", \"pass\" or \"fail\"");
+
 
         CommandLineParser parser = new DefaultParser();
 
@@ -134,6 +134,11 @@ public class Main {
         }
         LOGGER.error("progress stats will be written to {}",progressStats.getAbsolutePath());
         ProgressReporter progressReporter = new ProgressReporter(progressStats); // TODO make configurable
+
+        String vulnerabilitySignalAsString = cmd.getOptionValue("vulnerabilitysignal");
+        vulnerabilitySignalAsString = vulnerabilitySignalAsString.toUpperCase();
+        TestSignal expectedTestSignal = TestSignal.valueOf(vulnerabilitySignalAsString); // will throw illegal argument exception if no such constant exists
+
 
         // find artifact
         List<Artifact> allVersions = null;
@@ -338,27 +343,17 @@ public class Main {
 
                         if (result.isTested()) {
                             Path surefireReports = verificationProjectFolderStaged.resolve("target/surefire-reports");
-                            boolean testsSucceeded = false;
+
+                            boolean vulnerabilityIsPresent = false;
                             if (Files.exists(surefireReports)) {
                                 SurefireUtils.TestResults testResults = SurefireUtils.parseSurefireReports(surefireReports);
-                                if (testResults.getFailureCount() > 0) {
-                                    LOGGER.warn("there are {} failed tests in {}", testResults.getFailureCount(), verificationProjectFolderStaged);
-                                }
-                                if (testResults.getErrorCount() > 0) {
-                                    LOGGER.warn("there are {} error tests in {}", testResults.getErrorCount(), verificationProjectFolderStaged);
-                                }
-                                if (testResults.getSkippedCount() > 0) {
-                                    LOGGER.warn("there are {} skipped tests in {}", testResults.getSkippedCount(), verificationProjectFolderStaged);
-                                }
-
-                                // important -- do not proceed if some tests are skipped
-                                testsSucceeded = testResults.allTestsExecuted() && testResults.allTestsSucceeded();
+                                vulnerabilityIsPresent = testResults.assertExpectedOutcome(expectedTestSignal);
                             } else {
                                 LOGGER.warn("no surefire reports found in {}, will assume that tests have not passed", verificationProjectFolderStaged);
                             }
 
 
-                            if (testsSucceeded) {
+                            if (vulnerabilityIsPresent) {
                                 testedSuccessfully.add(match);
                                 Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(verificationProjectArtifactName);
                                 LOGGER.info("\tmoving verified project folder from {} to {}", verificationProjectFolderStaged, verificationProjectFolderFinal);

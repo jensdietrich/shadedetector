@@ -72,7 +72,7 @@ public class ASTBasedCloneDetector implements CloneDetector  {
             CompilationUnit cu2 = StaticJavaParser.parse(path2);
             String pck1 = cu1.getPackageDeclaration().isPresent() ? cu1.getPackageDeclaration().get().getNameAsString() : "";
             String pck2 = cu2.getPackageDeclaration().isPresent() ? cu1.getPackageDeclaration().get().getNameAsString() : "";
-            boolean samePackage = Objects.equals(pck1,pck2);
+            // boolean samePackage = Objects.equals(pck1,pck2);
             return new CloneRecord(analyseClone(cu1,cu2)?1.0:0.0,path1,path2);
 
         } catch (IOException e) {
@@ -91,7 +91,7 @@ public class ASTBasedCloneDetector implements CloneDetector  {
             return analyseCloneForFieldAccess((FieldAccessExpr)node2,(NameExpr)node1);
         }
 
-        // but normally noden types should be the same
+        // but normally node types should be the same
         if (node1.getClass() != node2.getClass()) {  // must be of the same kind
             return false;
         }

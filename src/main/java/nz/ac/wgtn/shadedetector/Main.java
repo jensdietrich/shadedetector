@@ -106,7 +106,6 @@ public class Main {
             fileAppender.setContext(lc);
             fileAppender.start();
             Logger rootLogger = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-            // add appended to root so that all loggers in project use it
             ((ch.qos.logback.classic.Logger)rootLogger).addAppender(fileAppender);
             LOGGER.info("file log appender set up, log file is: " + new File(logFile).getAbsolutePath());
         }

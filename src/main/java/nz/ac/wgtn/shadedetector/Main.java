@@ -1,5 +1,9 @@
 package nz.ac.wgtn.shadedetector;
 
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.FileAppender;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import nz.ac.wgtn.shadedetector.clonedetection.ImportTranslationExtractor;
@@ -71,6 +75,7 @@ public class Main {
 
         options.addOption("env","testenvironment",true,"a property file defining environment variables used when running tests on generated projects used to verify vulnerabilities, for instance, this can be used to set the Java version");
         options.addOption("ps","stats",true,"the file to which progress stats will be written (default is \"" + DEFAULT_PROGRESS_STATS_NAME + "\"");
+        options.addOption("l","log",true,"a log file name (optional, if missing logs will only be written to console)");
 
         // TODO add auto option to get this from xshady metadata
         options.addRequiredOption("sig","vulnerabilitysignal",true,"indicates the test signal indicating that the vulnerability is present, must be of one of \"error\", \"pass\" or \"fail\"");
@@ -85,6 +90,26 @@ public class Main {
         catch (MissingOptionException x) {
             LOGGER.error(x.getMessage(),x);
             printHelp(options);
+            System.exit(1);
+        }
+
+        if (cmd.hasOption("log")) {
+            String logFile = cmd.getOptionValue("log");
+            LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
+            PatternLayoutEncoder ple = new PatternLayoutEncoder();
+            ple.setPattern("%date %level [%thread] %logger{10} [%file:%line] %msg%n");
+            ple.setContext(lc);
+            ple.start();
+            FileAppender<ILoggingEvent> fileAppender = new FileAppender<>();
+            fileAppender.setFile(logFile);
+            fileAppender.setEncoder(ple);
+            fileAppender.setContext(lc);
+            fileAppender.start();
+            Logger rootLogger = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+            ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LOGGER;
+            ((ch.qos.logback.classic.Logger)rootLogger).addAppender(fileAppender);
+            //LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
+            LOGGER.info("file log appender set up, log file is: " + new File(logFile).getAbsolutePath());
         }
 
         String groupId = cmd.getOptionValue("group");

@@ -21,3 +21,6 @@ analyse-*.sh
 target
 run-on-java11.properties
 run-on-java8.properties
+.cache
+.generated
+results2

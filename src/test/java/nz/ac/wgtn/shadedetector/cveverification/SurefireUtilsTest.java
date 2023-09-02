@@ -141,61 +141,61 @@ public class SurefireUtilsTest {
     @Test
     public void testExpectedOutComeMustBeFail1() {
         SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,0,3,0);
-        assertTrue(results.assertExpectedOutcome(TestSignal.FAIL));
+        assertTrue(results.assertExpectedOutcome(TestSignal.FAILURE));
     }
 
     @Test
     public void testExpectedOutComeMustBeFail2() {
         SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,0,2,1);
-        assertFalse(results.assertExpectedOutcome(TestSignal.FAIL));
+        assertFalse(results.assertExpectedOutcome(TestSignal.FAILURE));
     }
 
     @Test
     public void testExpectedOutComeMustBeFail3() {
         SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,1,2,0);
-        assertFalse(results.assertExpectedOutcome(TestSignal.FAIL));
+        assertFalse(results.assertExpectedOutcome(TestSignal.FAILURE));
     }
 
     @Test
     public void testExpectedOutComeMustBeFail4() {
         SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,0,2,0);
-        assertFalse(results.assertExpectedOutcome(TestSignal.FAIL));
+        assertFalse(results.assertExpectedOutcome(TestSignal.FAILURE));
     }
 
     @Test
     public void testExpectedOutComeMustBeFail5() {
         SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,3,0,0);
-        assertFalse(results.assertExpectedOutcome(TestSignal.FAIL));
+        assertFalse(results.assertExpectedOutcome(TestSignal.FAILURE));
     }
 
     @Test
     public void testExpectedOutComeMustBePass1() {
         SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,0,0,0);
-        assertTrue(results.assertExpectedOutcome(TestSignal.PASS));
+        assertTrue(results.assertExpectedOutcome(TestSignal.SUCCESS));
     }
 
     @Test
     public void testExpectedOutComeMustBePass2() {
         SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,0,0,1);
-        assertFalse(results.assertExpectedOutcome(TestSignal.PASS));
+        assertFalse(results.assertExpectedOutcome(TestSignal.SUCCESS));
     }
 
     @Test
     public void testExpectedOutComeMustBePass3() {
         SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,1,0,0);
-        assertFalse(results.assertExpectedOutcome(TestSignal.PASS));
+        assertFalse(results.assertExpectedOutcome(TestSignal.SUCCESS));
     }
 
     @Test
     public void testExpectedOutComeMustBePass4() {
         SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,0,1,0);
-        assertFalse(results.assertExpectedOutcome(TestSignal.PASS));
+        assertFalse(results.assertExpectedOutcome(TestSignal.SUCCESS));
     }
 
     @Test
     public void testExpectedOutComeMustBePass5() {
         SurefireUtils.TestResults results = new SurefireUtils.TestResults(3,3,0,0);
-        assertFalse(results.assertExpectedOutcome(TestSignal.PASS));
+        assertFalse(results.assertExpectedOutcome(TestSignal.SUCCESS));
     }
 
 }

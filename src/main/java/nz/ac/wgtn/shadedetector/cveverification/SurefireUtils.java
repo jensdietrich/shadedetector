@@ -67,13 +67,13 @@ public class SurefireUtils {
             Preconditions.checkState(getTestCount()>0);
             Preconditions.checkArgument(signal!=null);
             if (allTestsExecuted()) {
-                if (signal== TestSignal.FAIL) {
+                if (signal== TestSignal.FAILURE) {
                     return getFailureCount()==getTestCount();
                 }
                 else if (signal== TestSignal.ERROR) {
                     return getErrorCount()==getTestCount();
                 }
-                else if (signal== TestSignal.PASS) {
+                else if (signal== TestSignal.SUCCESS) {
                     return getErrorCount()==0 && getFailureCount()==0;
                 }
             }

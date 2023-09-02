@@ -6,5 +6,5 @@ package nz.ac.wgtn.shadedetector.cveverification;
  * @author jens dietrich
  */
 public enum TestSignal {
-    PASS, FAIL, ERROR
+    SUCCESS, FAILURE, ERROR
 }

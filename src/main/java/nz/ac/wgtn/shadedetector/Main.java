@@ -21,6 +21,7 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * CLI main class.
@@ -78,7 +79,7 @@ public class Main {
         options.addOption("l","log",true,"a log file name (optional, if missing logs will only be written to console)");
 
         // TODO add auto option to get this from xshady metadata
-        options.addRequiredOption("sig","vulnerabilitysignal",true,"indicates the test signal indicating that the vulnerability is present, must be of one of \"error\", \"pass\" or \"fail\"");
+        options.addRequiredOption("sig","vulnerabilitysignal",true,"indicates the test signal indicating that the vulnerability is present, must be of one of: " + Stream.of(TestSignal.values()).map(v -> v.name()).collect(Collectors.joining(",")));
 
 
         CommandLineParser parser = new DefaultParser();

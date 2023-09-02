@@ -38,7 +38,7 @@ Arguments:
 
  -a,--artifact <arg>                        the Maven artifact id of the artifact queried for clones
  -c,--clonedetector <arg>                   the clone detector to be used (optional, default is "ast")
- -sig, --vulnerabilitysignal                indicates the test signal indicating that the vulnerability is present, must be of one of "error", "pass" or "fail"
+ -sig, --vulnerabilitysignal                indicates the test signal indicating that the vulnerability is present, must be of one of "error", "success" or "failure" (case-insensitive)
  -env,--testenvironment <arg>               a property file defining environment variables used when running tests on generated projects used to
                                             verify vulnerabilities, for instance, this can be used to set the Java version
  -g,--group <arg>                           the Maven group id of the artifact queried for clones
@@ -59,7 +59,7 @@ Arguments:
  -vv,--vulnerabilityversion <arg>           the version used in the projects generated to verify the presence of a vulnerability (default is "0.0.1")
  -ps,--stats                                the file to which progress stats will be written (default is stats.log)
  -l,--log                                   a log file name (optional, if missing logs will only be written to console)
- ```
+```
  
 ## Setting the Environment
 

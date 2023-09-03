@@ -8,6 +8,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import nz.ac.wgtn.shadedetector.clonedetection.ImportTranslationExtractor;
 import nz.ac.wgtn.shadedetector.cveverification.*;
+import nz.ac.wgtn.shadedetector.pov.PovProject;
+import nz.ac.wgtn.shadedetector.pov.PovProjectParser;
 import nz.ac.wgtn.shadedetector.resultreporting.CombinedResultReporter;
 import nz.ac.wgtn.shadedetector.resultreporting.ProgressReporter;
 import org.apache.commons.cli.*;
@@ -15,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeroturnaround.exec.ProcessResult;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.*;
@@ -159,10 +162,6 @@ public class Main {
         LOGGER.error("progress stats will be written to {}",progressStats.getAbsolutePath());
         ProgressReporter progressReporter = new ProgressReporter(progressStats); // TODO make configurable
 
-        String vulnerabilitySignalAsString = cmd.getOptionValue("vulnerabilitysignal");
-        vulnerabilitySignalAsString = vulnerabilitySignalAsString.toUpperCase();
-        TestSignal expectedTestSignal = TestSignal.valueOf(vulnerabilitySignalAsString); // will throw illegal argument exception if no such constant exists
-
 
         // find artifact
         List<Artifact> allVersions = null;
@@ -276,6 +275,26 @@ public class Main {
         }
         LOGGER.info("verification projects will be created in {}",verificationProjectInstancesFolderStaging);
         assert verificationProjectInstancesFolderStaging!=null;
+
+
+        // set up signal
+        String vulnerabilitySignalAsString = cmd.getOptionValue("vulnerabilitysignal");
+        vulnerabilitySignalAsString = vulnerabilitySignalAsString.toUpperCase();
+        TestSignal expectedTestSignal = null;
+        if (vulnerabilitySignalAsString.equals("AUTO")) {
+            Path povMetadata = verificationProjectTemplateFolder.resolve("pov-project.json");
+            try {
+                PovProject povMetaData = PovProjectParser.parse(povMetadata.toFile());
+                expectedTestSignal = povMetaData.getTestSignal();
+            } catch (FileNotFoundException e) {
+                LOGGER.error("Error instantiating test signal from pov meta data");
+            }
+        }
+        else {
+            expectedTestSignal = TestSignal.valueOf(vulnerabilitySignalAsString); // will throw illegal argument exception if no such constant exists
+        }
+        LOGGER.info("test signal is {}",expectedTestSignal);
+        assert expectedTestSignal != null;
 
         Path verificationProjectInstancesFolderFinal = null;
         if (cmd.hasOption("vulnerabilityoutput_final")) {

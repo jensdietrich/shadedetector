@@ -5,6 +5,7 @@ import com.google.common.io.CharStreams;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.concurrent.TimeUnit;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -53,7 +54,8 @@ public class MvnRestAPIClient {
             return cached;
         }
 
-        OkHttpClient client = new OkHttpClient();
+        // The default timeout of 10s is often much too short for "c:..." queries to https://search.maven.org/solrsearch/select
+        OkHttpClient client = new OkHttpClient.Builder().readTimeout(60, TimeUnit.SECONDS).build();
         LOGGER.info("fetching data (attempt {}): GET {}",attempt,url);
         Request request = new Request.Builder().url(url).build();
         Call call = client.newCall(request);

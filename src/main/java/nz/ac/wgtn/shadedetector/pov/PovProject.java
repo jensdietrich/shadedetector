@@ -13,7 +13,7 @@ public class PovProject {
     private String id = null;
     private String artifact = null;
     private String fixVersion = null;
-    private TestSignal testSignal = null;
+    private TestSignal testSignalWhenVulnerable = null;
     private List<String> vulnerableVersions = null;
     private List<String> references = null;
 
@@ -41,12 +41,12 @@ public class PovProject {
         this.fixVersion = fixVersion;
     }
 
-    public TestSignal getTestSignal() {
-        return testSignal;
+    public TestSignal getTestSignalWhenVulnerable() {
+        return testSignalWhenVulnerable;
     }
 
-    public void setTestSignal(TestSignal testSignal) {
-        this.testSignal = testSignal;
+    public void setTestSignalWhenVulnerable(TestSignal testSignalWhenVulnerable) {
+        this.testSignalWhenVulnerable = testSignalWhenVulnerable;
     }
 
     public List<String> getVulnerableVersions() {
@@ -70,11 +70,11 @@ public class PovProject {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         PovProject that = (PovProject) o;
-        return Objects.equals(id, that.id) && Objects.equals(artifact, that.artifact) && Objects.equals(fixVersion, that.fixVersion) && testSignal == that.testSignal && Objects.equals(vulnerableVersions, that.vulnerableVersions) && Objects.equals(references, that.references);
+        return Objects.equals(id, that.id) && Objects.equals(artifact, that.artifact) && Objects.equals(fixVersion, that.fixVersion) && testSignalWhenVulnerable == that.testSignalWhenVulnerable && Objects.equals(vulnerableVersions, that.vulnerableVersions) && Objects.equals(references, that.references);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, artifact, fixVersion, testSignal, vulnerableVersions, references);
+        return Objects.hash(id, artifact, fixVersion, testSignalWhenVulnerable, vulnerableVersions, references);
     }
 }

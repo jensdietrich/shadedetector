@@ -285,7 +285,7 @@ public class Main {
             Path povMetadata = verificationProjectTemplateFolder.resolve("pov-project.json");
             try {
                 PovProject povMetaData = PovProjectParser.parse(povMetadata.toFile());
-                expectedTestSignal = povMetaData.getTestSignal();
+                expectedTestSignal = povMetaData.getTestSignalWhenVulnerable();
             } catch (FileNotFoundException e) {
                 LOGGER.error("Error instantiating test signal from pov meta data");
             }

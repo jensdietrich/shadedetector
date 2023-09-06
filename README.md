@@ -33,7 +33,7 @@ The project must be build with Java 11 or better. To build run `mvn package`. Th
 
 ```
 usage: java -cp <classpath> Main -a <arg> [-c <arg>] [-env <arg>] -g <arg> [-o <arg>] [-o1 <arg>] [-o2 <arg>] [-o3 <arg>] [-ps <arg>] [-r <arg>] [-s
-       <arg>] -v <arg> [-vg <arg>] [-vos <arg>] [-vov <arg>] [-vul <arg>] [-vv <arg>]
+       <arg>] -v <arg> [-vg <arg>] -vos <arg> -vov <arg> -vul <arg> [-vv <arg>]
 Arguments:
 
  -a,--artifact <arg>                        the Maven artifact id of the artifact queried for clones

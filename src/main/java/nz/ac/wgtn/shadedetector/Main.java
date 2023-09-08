@@ -13,6 +13,7 @@ import nz.ac.wgtn.shadedetector.pov.PovProjectParser;
 import nz.ac.wgtn.shadedetector.resultreporting.CombinedResultReporter;
 import nz.ac.wgtn.shadedetector.resultreporting.ProgressReporter;
 import org.apache.commons.cli.*;
+import org.jdom2.JDOMException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeroturnaround.exec.ProcessResult;
@@ -385,17 +386,7 @@ public class Main {
                         }
 
                         if (result.isTested()) {
-                            Path surefireReports = verificationProjectFolderStaged.resolve("target/surefire-reports");
-
-                            boolean vulnerabilityIsPresent = false;
-                            if (Files.exists(surefireReports)) {
-                                SurefireUtils.TestResults testResults = SurefireUtils.parseSurefireReports(surefireReports);
-                                vulnerabilityIsPresent = testResults.assertExpectedOutcome(expectedTestSignal);
-                            } else {
-                                LOGGER.warn("no surefire reports found in {}, will assume that tests have not passed", verificationProjectFolderStaged);
-                            }
-
-
+                            boolean vulnerabilityIsPresent = isVulnerabilityPresent(expectedTestSignal, verificationProjectFolderStaged);
                             if (vulnerabilityIsPresent) {
                                 testedSuccessfully.add(match);
                                 Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(verificationProjectArtifactName);
@@ -455,6 +446,18 @@ public class Main {
         catch (IOException x) {
             LOGGER.error("error finishing result reporting",x);
         }
+    }
+
+    private static boolean isVulnerabilityPresent(TestSignal expectedTestSignal, Path verificationProjectFolder) throws IOException, JDOMException {
+        Path surefireReports = verificationProjectFolder.resolve("target/surefire-reports");
+
+        if (Files.exists(surefireReports)) {
+            SurefireUtils.TestResults testResults = SurefireUtils.parseSurefireReports(surefireReports);
+            return testResults.assertExpectedOutcome(expectedTestSignal);
+        }
+
+        LOGGER.warn("no surefire reports found in {}, will assume that tests have not passed", verificationProjectFolder);
+        return false;
     }
 
 

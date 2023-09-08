@@ -401,8 +401,9 @@ public class Main {
                                     String out = pr.outputUTF8();
                                     Files.write(buildLog, List.of(out));
 
-                                    if (pr.getExitValue() != 0) {
-                                        LOGGER.error("error testing final project {}", verificationProjectFolderFinal);
+                                    boolean vulnerabilityIsPresentInFinal = isVulnerabilityPresent(expectedTestSignal, verificationProjectFolderFinal);
+                                    if (!vulnerabilityIsPresentInFinal) {
+                                        LOGGER.error("error testing final project {} -- vulnerability was present in staging but not in final", verificationProjectFolderFinal);
                                     }
                                 } catch (Exception x) {
                                     LOGGER.error("error testing final project {}", verificationProjectFolderFinal, x);

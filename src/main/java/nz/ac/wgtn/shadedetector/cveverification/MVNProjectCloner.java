@@ -137,12 +137,11 @@ public class MVNProjectCloner {
         logFile = clonedProjectFolder.resolve(TEST_LOG);
         try {
             ProcessResult pr = MVNExe.mvnTest(clonedProjectFolder,environment);
-            if (pr.getExitValue()==0) {
-                result.success(TESTED);
-            }
-            else {
+            // A nonzero exit code may simply indicate that a test failed -- which is not
+            // unexpected, and if testSignalWhenVulnerable == "failure", is even what we want.
+            result.success(TESTED);
+            if (pr.getExitValue() != 0) {
                 String out = pr.outputUTF8();
-                result.failed(TESTED,out);
                 Files.write(logFile,List.of(out));
             }
         }

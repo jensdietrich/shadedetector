@@ -454,7 +454,16 @@ public class Main {
 
         if (Files.exists(surefireReports)) {
             SurefireUtils.TestResults testResults = SurefireUtils.parseSurefireReports(surefireReports);
-            return testResults.assertExpectedOutcome(expectedTestSignal);
+            boolean vulnerabilityIsPresent = testResults.assertExpectedOutcome(expectedTestSignal);
+            LOGGER.info("tests in {}: {} passed, {} failed, {} errors, {} skipped -> vuln is {}sent",
+                    verificationProjectFolder,
+                    testResults.getTestCount() - (testResults.getFailureCount() + testResults.getErrorCount() + testResults.getSkippedCount()),
+                    testResults.getFailureCount(),
+                    testResults.getErrorCount(),
+                    testResults.getSkippedCount(),
+                    vulnerabilityIsPresent ? "pre" : "ab"
+            );
+            return vulnerabilityIsPresent;
         }
 
         LOGGER.warn("no surefire reports found in {}, will assume that tests have not passed", verificationProjectFolder);

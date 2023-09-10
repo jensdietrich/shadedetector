@@ -96,10 +96,6 @@ public class ArtifactSearch {
     }
 
     private static List<File> getCachedOrFetchByClass(String className, int batchCount, int maxResultsInEachBatch) throws ArtifactSearchException {
-        if (!CACHE_BY_CLASSNAME.exists()) {
-            CACHE_BY_CLASSNAME.mkdirs();
-            LOGGER.info("created cache folder {}",CACHE_BY_CLASSNAME.getAbsolutePath());
-        }
         List<File> cached = getCachedByClassName(className);
         if (!cached.isEmpty()) {
             LOGGER.info("using cached data from " + cached.stream().map(f -> f.getAbsolutePath()).collect(Collectors.joining(", ")));
@@ -130,10 +126,6 @@ public class ArtifactSearch {
 
 
     private static List<File> getCachedOrFetchByGroupAndArtifactId(String groupId,String artifactId, int batchCount, int maxResultsInEachBatch) throws ArtifactSearchException {
-        if (!CACHE_ARTIFACT_VERSIONS.exists()) {
-            CACHE_ARTIFACT_VERSIONS.mkdirs();
-            LOGGER.info("created cache folder " + CACHE_ARTIFACT_VERSIONS.getAbsolutePath());
-        }
         List<File> cached = getCachedByGroupAndArtifactId(groupId,artifactId);
         if (!cached.isEmpty()) {
             LOGGER.info("using cached data from " + cached.stream().map(f -> f.getAbsolutePath()).collect(Collectors.joining(", ")));

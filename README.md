@@ -46,7 +46,7 @@ Arguments:
  -o1,--output1 <arg>                        an additional component used to process and report results
  -o2,--output2 <arg>                        an additional component used to process and report results
  -o3,--output3 <arg>                        an additional component used to process and report results
- -ps,--stats <arg>                          the file to which progress stats will be written (default is "stats.log"
+ -ps,--stats <arg>                          the file to which progress stats will be written (default is "stats.log")
  -r,--resultconsolidation <arg>             the query result consolidation strategy to be used (optional, default is "moreThanOne")
  -s,--classselector <arg>                   the strategy used to select classes (optional, default is"complexnames")
  -v,--version <arg>                         the Maven version of the artifact queried for clones
@@ -59,6 +59,7 @@ Arguments:
  -vv,--vulnerabilityversion <arg>           the version used in the projects generated to verify the presence of a vulnerability (default is "0.0.1")
  -ps,--stats                                the file to which progress stats will be written (default is stats.log)
  -l,--log                                   a log file name (optional, if missing logs will only be written to console)
+ -cache,--cachedir                          path to root of cache folder hierarchy (default is ".cache")
 ```
  
 ## Setting the Environment

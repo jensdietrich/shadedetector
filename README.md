@@ -59,7 +59,7 @@ Arguments:
  -vv,--vulnerabilityversion <arg>           the version used in the projects generated to verify the presence of a vulnerability (default is "0.0.1")
  -ps,--stats                                the file to which progress stats will be written (default is stats.log)
  -l,--log                                   a log file name (optional, if missing logs will only be written to console)
- -cache,--cachedir                          path to root of cache folder hierarchy (default is ".cache")
+ -cache,--cachedir <arg>                    path to root of cache folder hierarchy (default is ".cache")
 ```
  
 ## Setting the Environment

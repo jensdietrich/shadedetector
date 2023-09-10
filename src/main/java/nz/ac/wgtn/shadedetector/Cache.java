@@ -18,20 +18,11 @@ public class Cache {
     }
 
     public static void setRoot(File dir) {
-        Cache.ROOT = dir;
-        if (!dir.exists()) {
-            LOGGER.info("Creating cache folder {}",dir.getAbsolutePath());
-            dir.mkdirs();
-        }
+        Cache.ROOT = ensureDirExists(dir);
     }
 
     public static File getCache(String name) {
-        File dir = new File(ROOT,name);
-        if (!dir.exists()) {
-            LOGGER.info("Creating cache folder {}",dir.getAbsolutePath());
-            dir.mkdirs();
-        }
-        return dir;
+        return ensureDirExists(new File(ROOT,name));
     }
 
     public static boolean clearCache(String name) {
@@ -43,5 +34,12 @@ public class Cache {
         return true;
     }
 
+    private static File ensureDirExists(File dir) {
+        if (!dir.exists()) {
+            LOGGER.info("Creating cache folder {}",dir.getAbsolutePath());
+            dir.mkdirs();
+        }
 
+        return dir; // For convenience
+    }
 }

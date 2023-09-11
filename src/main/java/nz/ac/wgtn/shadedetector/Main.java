@@ -79,8 +79,9 @@ public class Main {
         options.addOption("vv","vulnerabilityversion",true,"the version used in the projects generated to verify the presence of a vulnerability (default is \"" + DEFAULT_GENERATED_VERIFICATION_PROJECT_VERSION + "\")");
 
         options.addOption("env","testenvironment",true,"a property file defining environment variables used when running tests on generated projects used to verify vulnerabilities, for instance, this can be used to set the Java version");
-        options.addOption("ps","stats",true,"the file to which progress stats will be written (default is \"" + DEFAULT_PROGRESS_STATS_NAME + "\"");
+        options.addOption("ps","stats",true,"the file to which progress stats will be written (default is \"" + DEFAULT_PROGRESS_STATS_NAME + "\")");
         options.addOption("l","log",true,"a log file name (optional, if missing logs will only be written to console)");
+        options.addOption("cache", "cachedir", true, "path to root of cache folder hierarchy (default is \"" + Cache.getRoot() +"\")");
 
         // TODO add auto option to get this from xshady metadata
         options.addRequiredOption("sig","vulnerabilitysignal",true,"indicates the test signal indicating that the vulnerability is present, must be of one of: " + Stream.of(TestSignal.values()).map(v -> v.name()).collect(Collectors.joining(",")));
@@ -113,6 +114,12 @@ public class Main {
             Logger rootLogger = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
             ((ch.qos.logback.classic.Logger)rootLogger).addAppender(fileAppender);
             LOGGER.info("file log appender set up, log file is: " + new File(logFile).getAbsolutePath());
+        }
+
+        if (cmd.hasOption("cachedir")) {
+            String cacheDir = cmd.getOptionValue("cachedir");
+            Cache.setRoot(new File(cacheDir));
+            LOGGER.info("set cache root dir to {}", cacheDir);
         }
 
         String groupId = cmd.getOptionValue("group");

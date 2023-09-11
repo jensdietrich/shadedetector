@@ -6,6 +6,8 @@ import nz.ac.wgtn.shadedetector.resultreporting.ProgressReporter;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -14,6 +16,16 @@ import java.util.stream.Stream;
  * @author jens dietrich
  */
 public class PipelineAnalysis {
+
+    // example: stats100-CVE-2013-2186.log
+    public static final Pattern SUMMARY_FILE_PATTERN = Pattern.compile("stats.+-CVE-\\d\\d\\d\\d-\\d*\\.log");
+
+    // extract CVE from filename
+    public static final Function<File,String> FILE2CVE = f -> {
+        String name = f.getName().replace(".log","");
+        return name.substring(name.indexOf("-")+1);
+    };
+
 
     public static void main (String[] args) throws IOException {
 
@@ -46,8 +58,7 @@ public class PipelineAnalysis {
 
             Stream.of(SUMMARY_FOLDER.listFiles())
                 .sorted()
-                .filter(f -> f.getName().startsWith("CVE-"))
-                .filter(f -> f.getName().endsWith(".properties"))
+                .filter(f -> SUMMARY_FILE_PATTERN.matcher(f.getName()).matches())
                 .forEach(f -> {
                     Properties properties = new Properties();
                     try (Reader reader = new FileReader(f)) {
@@ -56,7 +67,7 @@ public class PipelineAnalysis {
                         throw new RuntimeException(e);
                     }
                     out.println(asLatexTableRow(
-                        f.getName().replace(".properties",""),
+                        FILE2CVE.apply(f),
                         getValue(properties, Main.ProcessingStage.QUERY_RESULTS,versionedCounters,unversionedCounters),
                         getValue(properties, Main.ProcessingStage.CONSOLIDATED_QUERY_RESULTS,versionedCounters,unversionedCounters),
                         getValue(properties, Main.ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE,versionedCounters,unversionedCounters),

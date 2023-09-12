@@ -318,11 +318,13 @@ public class Main {
         assert verificationProjectInstancesFolderStaging!=null;
 
 
-        // set up signal
+        // set up signal (may already have been read from pov-projects.json)
         String vulnerabilitySignalAsString = cmd.getOptionValue("vulnerabilitysignal");
-        vulnerabilitySignalAsString = vulnerabilitySignalAsString.toUpperCase();
-        if (!vulnerabilitySignalAsString.equals("AUTO")) { // "auto" is now the default; ignore here for backcompat
-            expectedTestSignal = TestSignal.valueOf(vulnerabilitySignalAsString); // will throw illegal argument exception if no such constant exists
+        if (vulnerabilitySignalAsString != null) {
+            vulnerabilitySignalAsString = vulnerabilitySignalAsString.toUpperCase();
+            if (!vulnerabilitySignalAsString.equals("AUTO")) { // "auto" is now the default; ignore here for backcompat
+                expectedTestSignal = TestSignal.valueOf(vulnerabilitySignalAsString); // will throw illegal argument exception if no such constant exists
+            }
         }
 
         if (expectedTestSignal == null) {

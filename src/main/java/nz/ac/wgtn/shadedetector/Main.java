@@ -57,10 +57,10 @@ public class Main {
 
     public static void main (String[] args) throws ParseException {
         Options options = new Options();
-        options.addRequiredOption("g", "group",true, "the Maven group id of the artifact queried for clones");
-        options.addRequiredOption("a", "artifact",true, "the Maven artifact id of the artifact queried for clones");
+        options.addOption("g", "group",true, "the Maven group id of the artifact queried for clones");
+        options.addOption("a", "artifact",true, "the Maven artifact id of the artifact queried for clones");
         // @TODO - in the future, we could generalise this to look for version ranges , allow wildcards etc
-        options.addRequiredOption("v", "version",true, "the Maven version of the artifact queried for clones");
+        options.addOption("v", "version",true, "the Maven version of the artifact queried for clones");
 
         // we need a little language here to pass parameters, such as list:class1,class2
         // needs default
@@ -72,7 +72,7 @@ public class Main {
         options.addOption("c","clonedetector",true,"the clone detector to be used (optional, default is \"" + CLONE_DETECTOR_FACTORY.getDefault().name() + "\")");
         options.addOption("r","resultconsolidation",true,"the query result consolidation strategy to be used (optional, default is \"" + CONSOLIDATION_STRATEGY_FACTORY.getDefault().name() + "\")");
 
-        options.addRequiredOption("vul","vulnerabilitydemo",true,"a folder containing a Maven project that verifies a vulnerability in the original library with test(s), and can be used as a template to verify the presence of the vulnerability in a clone");
+        options.addRequiredOption("vul","vulnerabilitydemo",true,"a folder containing a Maven project that verifies a vulnerability in the original library with test(s), and can be used as a template to verify the presence of the vulnerability in a clone; values for -g, -a, -v and -sig are read from any contained pov-project.json");
         options.addRequiredOption("vos","vulnerabilityoutput_staging",true,"the root folder where for each clone, a project verifying the presence of a vulnerability is created");
         options.addRequiredOption("vov","vulnerabilityoutput_final",true,"the root folder where for each clone, a project created in the staging folder will be moved to if verification succeeds (i.e. if the vulnerability is shown to be present)");
         options.addOption("vg","vulnerabilitygroup",true,"the group name used in the projects generated to verify the presence of a vulnerability (default is \"" + DEFAULT_GENERATED_VERIFICATION_PROJECT_GROUP_NAME + "\")");
@@ -83,8 +83,7 @@ public class Main {
         options.addOption("l","log",true,"a log file name (optional, if missing logs will only be written to console)");
         options.addOption("cache", "cachedir", true, "path to root of cache folder hierarchy (default is \"" + Cache.getRoot() +"\")");
 
-        // TODO add auto option to get this from xshady metadata
-        options.addRequiredOption("sig","vulnerabilitysignal",true,"indicates the test signal indicating that the vulnerability is present, must be of one of: " + Stream.of(TestSignal.values()).map(v -> v.name()).collect(Collectors.joining(",")));
+        options.addOption("sig","vulnerabilitysignal",true,"indicates the test signal indicating that the vulnerability is present, must be of one of: " + Stream.of(TestSignal.values()).map(v -> v.name()).collect(Collectors.joining(",")));
 
 
         CommandLineParser parser = new DefaultParser();
@@ -122,9 +121,38 @@ public class Main {
             LOGGER.info("set cache root dir to {}", cacheDir);
         }
 
-        String groupId = cmd.getOptionValue("group");
-        String artifactId = cmd.getOptionValue("artifact");
-        String version = cmd.getOptionValue("version");
+        // see whether vulnerability verification is available
+        Path verificationProjectTemplateFolder = null;
+        if (cmd.hasOption("vulnerabilitydemo")) {
+            verificationProjectTemplateFolder = Path.of(cmd.getOptionValue("vulnerabilitydemo"));
+            try {
+                checkVerificationProject(verificationProjectTemplateFolder);
+                LOGGER.info("vulnerability verification project is not valid");
+            }
+            catch (Exception x) {
+                LOGGER.error("vulnerability verification project is valid");
+            }
+        }
+
+        String groupIdFromMetadata = null;
+        String artifactIdFromMetadata = null;
+        String versionFromMetadata = null;
+        TestSignal expectedTestSignal = null;
+        // Get defaults from PoV metadata
+        Path povMetadataPath = verificationProjectTemplateFolder.resolve("pov-project.json");
+        try {
+            PovProject povMetaData = PovProjectParser.parse(povMetadataPath.toFile());
+            expectedTestSignal = povMetaData.getTestSignalWhenVulnerable();
+            String[] artifactPieces = povMetaData.getArtifact().split(":");
+            groupIdFromMetadata = artifactPieces[0];
+            artifactIdFromMetadata = artifactPieces[1];
+            versionFromMetadata = povMetaData.getVulnerableVersions().get(0);   // Assume first version is latest
+        } catch (FileNotFoundException e) {
+            LOGGER.error("Error instantiating test signal from pov meta data");
+        }
+        String groupId = cmd.getOptionValue("group", groupIdFromMetadata);
+        String artifactId = cmd.getOptionValue("artifact", artifactIdFromMetadata);
+        String version = cmd.getOptionValue("version", versionFromMetadata);
         GAV gav = new GAV(groupId,artifactId,version);
 
         CloneDetector cloneDetector = instantiateOptional(CLONE_DETECTOR_FACTORY,cmd,"clone detector","clonedetector");
@@ -258,18 +286,6 @@ public class Main {
             LOGGER.error("error initialising result reporting",x);
         }
 
-        // see whether vulnerability verification is available
-        Path verificationProjectTemplateFolder = null;
-        if (cmd.hasOption("vulnerabilitydemo")) {
-            verificationProjectTemplateFolder = Path.of(cmd.getOptionValue("vulnerabilitydemo"));
-            try {
-                checkVerificationProject(verificationProjectTemplateFolder);
-                LOGGER.info("vulnerability verification project is not valid");
-            }
-            catch (Exception x) {
-                LOGGER.error("vulnerability verification project is valid");
-            }
-        }
         Path verificationProjectInstancesFolderStaging = null;
         if (cmd.hasOption("vulnerabilityoutput_staging")) {
             verificationProjectInstancesFolderStaging = Path.of(cmd.getOptionValue("vulnerabilityoutput_staging"));
@@ -288,19 +304,15 @@ public class Main {
         // set up signal
         String vulnerabilitySignalAsString = cmd.getOptionValue("vulnerabilitysignal");
         vulnerabilitySignalAsString = vulnerabilitySignalAsString.toUpperCase();
-        TestSignal expectedTestSignal = null;
-        if (vulnerabilitySignalAsString.equals("AUTO")) {
-            Path povMetadata = verificationProjectTemplateFolder.resolve("pov-project.json");
-            try {
-                PovProject povMetaData = PovProjectParser.parse(povMetadata.toFile());
-                expectedTestSignal = povMetaData.getTestSignalWhenVulnerable();
-            } catch (FileNotFoundException e) {
-                LOGGER.error("Error instantiating test signal from pov meta data");
-            }
-        }
-        else {
+        if (!vulnerabilitySignalAsString.equals("AUTO")) { // "auto" is now the default; ignore here for backcompat
             expectedTestSignal = TestSignal.valueOf(vulnerabilitySignalAsString); // will throw illegal argument exception if no such constant exists
         }
+
+        if (expectedTestSignal == null) {
+            LOGGER.error("could not determine testSignalWhenVulnerable from the pov-project.json metadata, and --vulnerabilitysignal was not specified");
+            System.exit(1);
+        }
+
         LOGGER.info("test signal is {}",expectedTestSignal);
         assert expectedTestSignal != null;
 

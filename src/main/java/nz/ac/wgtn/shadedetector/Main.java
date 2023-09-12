@@ -139,17 +139,22 @@ public class Main {
         String versionFromMetadata = null;
         TestSignal expectedTestSignal = null;
         // Get defaults from PoV metadata
-        Path povMetadataPath = verificationProjectTemplateFolder.resolve("pov-project.json");
-        try {
-            PovProject povMetaData = PovProjectParser.parse(povMetadataPath.toFile());
-            expectedTestSignal = povMetaData.getTestSignalWhenVulnerable();
-            String[] artifactPieces = povMetaData.getArtifact().split(":");
-            groupIdFromMetadata = artifactPieces[0];
-            artifactIdFromMetadata = artifactPieces[1];
-            versionFromMetadata = povMetaData.getVulnerableVersions().get(0);   // Assume first version is latest
-        } catch (FileNotFoundException e) {
-            LOGGER.error("Error instantiating test signal from pov meta data");
+        File povMetadataFile = verificationProjectTemplateFolder.resolve("pov-project.json").toFile();
+        if (povMetadataFile.exists()) {
+            try {
+                LOGGER.info("Reading PoV metadata from {}", povMetadataFile.getAbsolutePath());
+                PovProject povMetaData = PovProjectParser.parse(povMetadataFile);
+                expectedTestSignal = povMetaData.getTestSignalWhenVulnerable();
+                String[] tokens = povMetaData.getArtifact().split(":");
+                groupIdFromMetadata = tokens[0];
+                artifactIdFromMetadata = tokens[1];
+                versionFromMetadata = povMetaData.getVulnerableVersions().get(0);   // Assume first version is latest
+                LOGGER.info("Read {}:{}:{}, testSignalWhenVulnerable={} from PoV metadata", groupIdFromMetadata, artifactIdFromMetadata, versionFromMetadata, expectedTestSignal);
+            } catch (FileNotFoundException e) {
+                LOGGER.error("Error instantiating test signal from pov meta data");
+            }
         }
+        // Command-line arguments to -g, -a, -v, -sig override values read from pov-project.json
         String groupId = cmd.getOptionValue("group", groupIdFromMetadata);
         if (groupId == null) {
             LOGGER.error("Group ID could not be read from pov-project.json metadata, so must be specified with -g or --group");

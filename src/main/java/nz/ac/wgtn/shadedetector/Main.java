@@ -151,8 +151,20 @@ public class Main {
             LOGGER.error("Error instantiating test signal from pov meta data");
         }
         String groupId = cmd.getOptionValue("group", groupIdFromMetadata);
+        if (groupId == null) {
+            LOGGER.error("Group ID could not be read from pov-project.json metadata, so must be specified with -g or --group");
+            System.exit(1);
+        }
         String artifactId = cmd.getOptionValue("artifact", artifactIdFromMetadata);
+        if (artifactId == null) {
+            LOGGER.error("Artifact ID could not be read from pov-project.json metadata, so must be specified with -a or --artifact");
+            System.exit(1);
+        }
         String version = cmd.getOptionValue("version", versionFromMetadata);
+        if (version == null) {
+            LOGGER.error("Version could not be read from pov-project.json metadata, so must be specified with -v or --version");
+            System.exit(1);
+        }
         GAV gav = new GAV(groupId,artifactId,version);
 
         CloneDetector cloneDetector = instantiateOptional(CLONE_DETECTOR_FACTORY,cmd,"clone detector","clonedetector");

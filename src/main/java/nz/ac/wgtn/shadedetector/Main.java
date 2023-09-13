@@ -150,6 +150,12 @@ public class Main {
                 String artifactIdFromMetadata = tokens[1];
 //                versionFromMetadata = povMetaData.getVulnerableVersions().get(0);   // Assume first version is latest
                 try {
+                    //DEBUG
+                    File pomFile = verificationProjectTemplateFolder.resolve("pom.xml").toFile();
+                    LOGGER.info("pomFile=<{}>, exists={}", pomFile, pomFile.exists());
+                    List<MVNDependency> allDeps = POMAnalysis.getDependencies(verificationProjectTemplateFolder.resolve("pom.xml").toFile());
+                    LOGGER.info("All deps: {}", allDeps);
+
                     List<MVNDependency> possibleArtifactsUnderTest = POMAnalysis.getMatchingDependencies(verificationProjectTemplateFolder.resolve("pom.xml").toFile(), dep -> dep.getGroupId() == groupIdFromMetadata && dep.getArtifactId() == artifactIdFromMetadata);
                     if (possibleArtifactsUnderTest.size() != 1) {
                         LOGGER.error("Found {} dependency artifacts in PoV matching {}:{}, was expecting 1", possibleArtifactsUnderTest.size(), groupIdFromMetadata, artifactIdFromMetadata);

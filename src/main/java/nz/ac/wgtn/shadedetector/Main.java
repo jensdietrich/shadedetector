@@ -134,9 +134,9 @@ public class Main {
             }
         }
 
-        String groupIdFromMetadata = null;
-        String artifactIdFromMetadata = null;
-        String versionFromMetadata = null;
+        String groupId = null;
+        String artifactId = null;
+        String version = null;
         TestSignal expectedTestSignal = null;
         // Get defaults from PoV metadata
         File povMetadataFile = verificationProjectTemplateFolder.resolve("pov-project.json").toFile();
@@ -146,27 +146,41 @@ public class Main {
                 PovProject povMetaData = PovProjectParser.parse(povMetadataFile);
                 expectedTestSignal = povMetaData.getTestSignalWhenVulnerable();
                 String[] tokens = povMetaData.getArtifact().split(":");
-                groupIdFromMetadata = tokens[0];
-                artifactIdFromMetadata = tokens[1];
+                String groupIdFromMetadata = tokens[0];
+                String artifactIdFromMetadata = tokens[1];
 //                versionFromMetadata = povMetaData.getVulnerableVersions().get(0);   // Assume first version is latest
-                versionFromMetadata = POMAnalysis.getMatchingDependencies(verificationProjectTemplateFolder.resolve("pom.xml").toFile(), dep -> dep.getGroupId() == groupIdFromMetadata && dep.getArtifactId() == artifactIdFromMetadata);
-                LOGGER.info("Read {}:{}:{}, testSignalWhenVulnerable={} from PoV metadata", groupIdFromMetadata, artifactIdFromMetadata, versionFromMetadata, expectedTestSignal);
+                try {
+                    List<MVNDependency> possibleArtifactsUnderTest = POMAnalysis.getMatchingDependencies(verificationProjectTemplateFolder.resolve("pom.xml").toFile(), dep -> dep.getGroupId() == groupIdFromMetadata && dep.getArtifactId() == artifactIdFromMetadata);
+                    if (possibleArtifactsUnderTest.size() != 1) {
+                        LOGGER.error("Found {} dependency artifacts in PoV matching {}:{}, was expecting 1", possibleArtifactsUnderTest.size(), groupIdFromMetadata, artifactIdFromMetadata);
+                        System.exit(1);
+                    }
+                    String versionFromMetadata = possibleArtifactsUnderTest.get(0).getVersion();
+                    groupId = groupIdFromMetadata;
+                    artifactId = artifactIdFromMetadata;
+                    version = versionFromMetadata;
+                    LOGGER.info("Read {}:{}:{}, testSignalWhenVulnerable={} from PoV metadata (version came from pom.xml)", groupIdFromMetadata, artifactIdFromMetadata, versionFromMetadata, expectedTestSignal);
+                }
+                catch (Exception e) {
+                    LOGGER.error("Exception while reading pom.xml to extract version", e);
+                    System.exit(1);
+                }
             } catch (FileNotFoundException e) {
                 LOGGER.error("Error instantiating test signal from pov meta data");
             }
         }
         // Command-line arguments to -g, -a, -v, -sig override values read from pov-project.json
-        String groupId = cmd.getOptionValue("group", groupIdFromMetadata);
+        groupId = cmd.getOptionValue("group", groupId);
         if (groupId == null) {
             LOGGER.error("Group ID could not be read from pov-project.json metadata, so must be specified with -g or --group");
             System.exit(1);
         }
-        String artifactId = cmd.getOptionValue("artifact", artifactIdFromMetadata);
+        artifactId = cmd.getOptionValue("artifact", artifactId);
         if (artifactId == null) {
             LOGGER.error("Artifact ID could not be read from pov-project.json metadata, so must be specified with -a or --artifact");
             System.exit(1);
         }
-        String version = cmd.getOptionValue("version", versionFromMetadata);
+        version = cmd.getOptionValue("version", version);
         if (version == null) {
             LOGGER.error("Version could not be read from pov-project.json metadata, so must be specified with -v or --version");
             System.exit(1);
@@ -224,8 +238,9 @@ public class Main {
             // note: fetching artifacts for all versions could be postponed
             ArtifactSearchResponse response = ArtifactSearch.findVersions(groupId,artifactId,1,ArtifactSearch.ROWS_PER_BATCH);
             allVersions = response.getBody().getArtifacts();
+            final String finalVersion = version;    // To make the compiler happy compiling a lambda
             artifact = allVersions.stream()
-                .filter(a -> a.getVersion().equals(version))
+                .filter(a -> a.getVersion().equals(finalVersion))
                 .findFirst().orElse(null);
 
         } catch (ArtifactSearchException e) {

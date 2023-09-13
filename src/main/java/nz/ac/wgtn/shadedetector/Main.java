@@ -156,7 +156,7 @@ public class Main {
                     List<MVNDependency> allDeps = POMAnalysis.getDependencies(verificationProjectTemplateFolder.resolve("pom.xml").toFile());
                     LOGGER.info("All deps: {}", allDeps);
 
-                    List<MVNDependency> possibleArtifactsUnderTest = POMAnalysis.getMatchingDependencies(verificationProjectTemplateFolder.resolve("pom.xml").toFile(), dep -> dep.getGroupId() == groupIdFromMetadata && dep.getArtifactId() == artifactIdFromMetadata);
+                    List<MVNDependency> possibleArtifactsUnderTest = POMAnalysis.getMatchingDependencies(verificationProjectTemplateFolder.resolve("pom.xml").toFile(), dep -> dep.getGroupId().equals(groupIdFromMetadata) && dep.getArtifactId().equals(artifactIdFromMetadata));
                     if (possibleArtifactsUnderTest.size() != 1) {
                         LOGGER.error("Found {} dependency artifacts in PoV matching {}:{}, was expecting 1", possibleArtifactsUnderTest.size(), groupIdFromMetadata, artifactIdFromMetadata);
                         System.exit(1);

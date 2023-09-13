@@ -148,7 +148,8 @@ public class Main {
                 String[] tokens = povMetaData.getArtifact().split(":");
                 groupIdFromMetadata = tokens[0];
                 artifactIdFromMetadata = tokens[1];
-                versionFromMetadata = povMetaData.getVulnerableVersions().get(0);   // Assume first version is latest
+//                versionFromMetadata = povMetaData.getVulnerableVersions().get(0);   // Assume first version is latest
+                versionFromMetadata = POMAnalysis.getMatchingDependencies(verificationProjectTemplateFolder.resolve("pom.xml").toFile(), dep -> dep.getGroupId() == groupIdFromMetadata && dep.getArtifactId() == artifactIdFromMetadata);
                 LOGGER.info("Read {}:{}:{}, testSignalWhenVulnerable={} from PoV metadata", groupIdFromMetadata, artifactIdFromMetadata, versionFromMetadata, expectedTestSignal);
             } catch (FileNotFoundException e) {
                 LOGGER.error("Error instantiating test signal from pov meta data");

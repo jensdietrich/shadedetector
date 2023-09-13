@@ -11,6 +11,7 @@ import java.nio.file.PathMatcher;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * Utilities related to the POM. In particular, this is used to establish whether
@@ -49,6 +50,10 @@ public class POMAnalysis {
     static boolean hasDependency (Path pom, Predicate<MVNDependency> condition) throws Exception {
         List<MVNDependency> dependencies = getDependencies(pom.toFile());
         return dependencies.stream().anyMatch(condition);
+    }
+
+    public static List<MVNDependency> getMatchingDependencies(File pom, Predicate<MVNDependency> condition) throws Exception {
+        return getDependencies(pom).stream().filter(condition).collect(Collectors.toList());
     }
 
     public static boolean hasGroupAndArtifactId(Artifact artifact,String groupId, String artifactId) throws Exception {

@@ -186,6 +186,7 @@ public class Main {
             System.exit(1);
         }
         GAV gav = new GAV(groupId,artifactId,version);
+        LOGGER.info("PoV template GAV: {}", gav.asString());
 
         CloneDetector cloneDetector = instantiateOptional(CLONE_DETECTOR_FACTORY,cmd,"clone detector","clonedetector");
         ClassSelector classSelector = instantiateOptional(CLASS_SELECTOR_FACTORY,cmd,"class selector","classselector");

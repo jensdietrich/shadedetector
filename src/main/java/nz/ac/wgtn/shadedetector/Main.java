@@ -148,7 +148,10 @@ public class Main {
                 String[] tokens = povMetaData.getArtifact().split(":");
                 String groupIdFromMetadata = tokens[0];
                 String artifactIdFromMetadata = tokens[1];
-//                versionFromMetadata = povMetaData.getVulnerableVersions().get(0);   // Assume first version is latest
+
+                // pov-project.json stores the complete set of vulnerableVersions according to the external DB entry, but NOT
+                // the specific version the PoV project repros the vuln on (i.e., depends on). That needs to be extracted from its pom.xml.
+                // Here we assume it's the only dependency with matching groupId and artifactId mentioned in pom.xml.
                 try {
                     List<MVNDependency> possibleArtifactsUnderTest = POMAnalysis.getMatchingDependencies(verificationProjectTemplateFolder.resolve("pom.xml").toFile(), dep -> dep.getGroupId().equals(groupIdFromMetadata) && dep.getArtifactId().equals(artifactIdFromMetadata));
                     if (possibleArtifactsUnderTest.size() != 1) {

@@ -57,10 +57,10 @@ public class Main {
 
     public static void main (String[] args) throws ParseException {
         Options options = new Options();
-        options.addOption("g", "group",true, "the Maven group id of the artifact queried for clones");
-        options.addOption("a", "artifact",true, "the Maven artifact id of the artifact queried for clones");
+        options.addOption("g", "group",true, "the Maven group id of the artifact queried for clones (default read from PoV's pov-project.json)");
+        options.addOption("a", "artifact",true, "the Maven artifact id of the artifact queried for clones (default read from PoV's pov-project.json)");
         // @TODO - in the future, we could generalise this to look for version ranges , allow wildcards etc
-        options.addOption("v", "version",true, "the Maven version of the artifact queried for clones");
+        options.addOption("v", "version",true, "the Maven version of the artifact queried for clones (default read from PoV's pom.xml)");
 
         // we need a little language here to pass parameters, such as list:class1,class2
         // needs default
@@ -83,7 +83,7 @@ public class Main {
         options.addOption("l","log",true,"a log file name (optional, if missing logs will only be written to console)");
         options.addOption("cache", "cachedir", true, "path to root of cache folder hierarchy (default is \"" + Cache.getRoot() +"\")");
 
-        options.addOption("sig","vulnerabilitysignal",true,"indicates the test signal indicating that the vulnerability is present, must be of one of: " + Stream.of(TestSignal.values()).map(v -> v.name()).collect(Collectors.joining(",")));
+        options.addOption("sig","vulnerabilitysignal",true,"indicates the test signal indicating that the vulnerability is present, must be of one of: " + Stream.of(TestSignal.values()).map(v -> v.name()).collect(Collectors.joining(",")) + " (default read from testSignalWhenVulnerable in PoV's pov-project.json)");
 
 
         CommandLineParser parser = new DefaultParser();

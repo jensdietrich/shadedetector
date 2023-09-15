@@ -1,7 +1,7 @@
 package nz.ac.wgtn.shadedetector;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Streams;
+import net.lingala.zip4j.ZipFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -21,15 +21,11 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 import java.io.*;
 import java.net.URL;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.nio.file.FileSystem;
 
 /**
  * Miscellaneous utilities.
@@ -116,21 +112,13 @@ public class Utils {
                 .collect(Collectors.toList());
         }
         else {
-            // use API in Java <= 11
-            FileSystem fs = FileSystems.newFileSystem(zipOrFolder, Utils.class.getClassLoader());
-            return Streams.stream(fs.getRootDirectories())
-                .flatMap(root -> {
-                    try {
-                        return Files.walk(root);
-                    }
-                    catch (IOException x) {
-                        LOGGER.error("Error extracting content of file system",x);
-                        throw new RuntimeException(x);
-                    }
-                })
-                .filter(filter)
-                .collect(Collectors.toList());
-
+            // A bug in jdk.zipfs causes OutOfMemoryError on some (specially crafted?) jar files, so just
+            // extract the jar manually instead. See https://github.com/jensdietrich/shadedetector/issues/18.
+            Path tempDir = Files.createTempDirectory(Cache.getRoot().toPath(), "ziptmp");
+            tempDir.toFile().deleteOnExit();
+            LOGGER.debug("Unzipping {} to {}, will delete on exit", zipOrFolder, tempDir);
+            new ZipFile(zipOrFolder.toFile()).extractAll(tempDir.toString());
+            return listContent(tempDir, filter);
         }
 
     }

@@ -57,10 +57,10 @@ public class Main {
 
     public static void main (String[] args) throws ParseException {
         Options options = new Options();
-        options.addRequiredOption("g", "group",true, "the Maven group id of the artifact queried for clones");
-        options.addRequiredOption("a", "artifact",true, "the Maven artifact id of the artifact queried for clones");
+        options.addOption("g", "group",true, "the Maven group id of the artifact queried for clones (default read from PoV's pov-project.json)");
+        options.addOption("a", "artifact",true, "the Maven artifact id of the artifact queried for clones (default read from PoV's pov-project.json)");
         // @TODO - in the future, we could generalise this to look for version ranges , allow wildcards etc
-        options.addRequiredOption("v", "version",true, "the Maven version of the artifact queried for clones");
+        options.addOption("v", "version",true, "the Maven version of the artifact queried for clones (default read from PoV's pom.xml)");
 
         // we need a little language here to pass parameters, such as list:class1,class2
         // needs default
@@ -72,7 +72,7 @@ public class Main {
         options.addOption("c","clonedetector",true,"the clone detector to be used (optional, default is \"" + CLONE_DETECTOR_FACTORY.getDefault().name() + "\")");
         options.addOption("r","resultconsolidation",true,"the query result consolidation strategy to be used (optional, default is \"" + CONSOLIDATION_STRATEGY_FACTORY.getDefault().name() + "\")");
 
-        options.addRequiredOption("vul","vulnerabilitydemo",true,"a folder containing a Maven project that verifies a vulnerability in the original library with test(s), and can be used as a template to verify the presence of the vulnerability in a clone");
+        options.addRequiredOption("vul","vulnerabilitydemo",true,"a folder containing a Maven project that verifies a vulnerability in the original library with test(s), and can be used as a template to verify the presence of the vulnerability in a clone; values for -g, -a, -v and -sig are read from any contained pov-project.json");
         options.addRequiredOption("vos","vulnerabilityoutput_staging",true,"the root folder where for each clone, a project verifying the presence of a vulnerability is created");
         options.addRequiredOption("vov","vulnerabilityoutput_final",true,"the root folder where for each clone, a project created in the staging folder will be moved to if verification succeeds (i.e. if the vulnerability is shown to be present)");
         options.addOption("vg","vulnerabilitygroup",true,"the group name used in the projects generated to verify the presence of a vulnerability (default is \"" + DEFAULT_GENERATED_VERIFICATION_PROJECT_GROUP_NAME + "\")");
@@ -83,8 +83,7 @@ public class Main {
         options.addOption("l","log",true,"a log file name (optional, if missing logs will only be written to console)");
         options.addOption("cache", "cachedir", true, "path to root of cache folder hierarchy (default is \"" + Cache.getRoot() +"\")");
 
-        // TODO add auto option to get this from xshady metadata
-        options.addRequiredOption("sig","vulnerabilitysignal",true,"indicates the test signal indicating that the vulnerability is present, must be of one of: " + Stream.of(TestSignal.values()).map(v -> v.name()).collect(Collectors.joining(",")));
+        options.addOption("sig","vulnerabilitysignal",true,"indicates the test signal indicating that the vulnerability is present, must be of one of: " + Stream.of(TestSignal.values()).map(v -> v.name()).collect(Collectors.joining(",")) + " (default read from testSignalWhenVulnerable in PoV's pov-project.json)");
 
 
         CommandLineParser parser = new DefaultParser();
@@ -122,10 +121,75 @@ public class Main {
             LOGGER.info("set cache root dir to {}", cacheDir);
         }
 
-        String groupId = cmd.getOptionValue("group");
-        String artifactId = cmd.getOptionValue("artifact");
-        String version = cmd.getOptionValue("version");
+        // see whether vulnerability verification is available
+        Path verificationProjectTemplateFolder = null;
+        if (cmd.hasOption("vulnerabilitydemo")) {
+            verificationProjectTemplateFolder = Path.of(cmd.getOptionValue("vulnerabilitydemo"));
+            try {
+                checkVerificationProject(verificationProjectTemplateFolder);
+                LOGGER.info("vulnerability verification project is not valid");
+            }
+            catch (Exception x) {
+                LOGGER.error("vulnerability verification project is valid");
+            }
+        }
+
+        String groupId = null;
+        String artifactId = null;
+        String version = null;
+        TestSignal expectedTestSignal = null;
+        // Get defaults from PoV metadata
+        File povMetadataFile = verificationProjectTemplateFolder.resolve("pov-project.json").toFile();
+        if (povMetadataFile.exists()) {
+            try {
+                LOGGER.info("Reading PoV metadata from {}", povMetadataFile.getAbsolutePath());
+                PovProject povMetaData = PovProjectParser.parse(povMetadataFile);
+                expectedTestSignal = povMetaData.getTestSignalWhenVulnerable();
+                String[] tokens = povMetaData.getArtifact().split(":");
+                String groupIdFromMetadata = tokens[0];
+                String artifactIdFromMetadata = tokens[1];
+
+                // pov-project.json stores the complete set of vulnerableVersions according to the external DB entry, but NOT
+                // the specific version the PoV project repros the vuln on (i.e., depends on). That needs to be extracted from its pom.xml.
+                // Here we assume it's the only dependency with matching groupId and artifactId mentioned in pom.xml.
+                try {
+                    List<MVNDependency> possibleArtifactsUnderTest = POMAnalysis.getMatchingDependencies(verificationProjectTemplateFolder.resolve("pom.xml").toFile(), dep -> dep.getGroupId().equals(groupIdFromMetadata) && dep.getArtifactId().equals(artifactIdFromMetadata));
+                    if (possibleArtifactsUnderTest.size() != 1) {
+                        LOGGER.error("Found {} dependency artifacts in PoV matching {}:{}, was expecting 1", possibleArtifactsUnderTest.size(), groupIdFromMetadata, artifactIdFromMetadata);
+                        System.exit(1);
+                    }
+                    String versionFromMetadata = possibleArtifactsUnderTest.get(0).getVersion();
+                    groupId = groupIdFromMetadata;
+                    artifactId = artifactIdFromMetadata;
+                    version = versionFromMetadata;
+                    LOGGER.info("Read {}:{}:{}, testSignalWhenVulnerable={} from PoV metadata (version came from pom.xml)", groupIdFromMetadata, artifactIdFromMetadata, versionFromMetadata, expectedTestSignal);
+                }
+                catch (Exception e) {
+                    LOGGER.error("Exception while reading pom.xml to extract version", e);
+                    System.exit(1);
+                }
+            } catch (FileNotFoundException e) {
+                LOGGER.error("Error instantiating test signal from pov meta data");
+            }
+        }
+        // Command-line arguments to -g, -a, -v, -sig override values read from pov-project.json
+        groupId = cmd.getOptionValue("group", groupId);
+        if (groupId == null) {
+            LOGGER.error("Group ID could not be read from pov-project.json metadata, so must be specified with -g or --group");
+            System.exit(1);
+        }
+        artifactId = cmd.getOptionValue("artifact", artifactId);
+        if (artifactId == null) {
+            LOGGER.error("Artifact ID could not be read from pov-project.json metadata, so must be specified with -a or --artifact");
+            System.exit(1);
+        }
+        version = cmd.getOptionValue("version", version);
+        if (version == null) {
+            LOGGER.error("Version could not be read from pov-project.json metadata, so must be specified with -v or --version");
+            System.exit(1);
+        }
         GAV gav = new GAV(groupId,artifactId,version);
+        LOGGER.info("PoV template GAV: {}", gav.asString());
 
         CloneDetector cloneDetector = instantiateOptional(CLONE_DETECTOR_FACTORY,cmd,"clone detector","clonedetector");
         ClassSelector classSelector = instantiateOptional(CLASS_SELECTOR_FACTORY,cmd,"class selector","classselector");
@@ -178,8 +242,9 @@ public class Main {
             // note: fetching artifacts for all versions could be postponed
             ArtifactSearchResponse response = ArtifactSearch.findVersions(groupId,artifactId,1,ArtifactSearch.ROWS_PER_BATCH);
             allVersions = response.getBody().getArtifacts();
+            final String finalVersion = version;    // To make the compiler happy compiling a lambda
             artifact = allVersions.stream()
-                .filter(a -> a.getVersion().equals(version))
+                .filter(a -> a.getVersion().equals(finalVersion))
                 .findFirst().orElse(null);
 
         } catch (ArtifactSearchException e) {
@@ -258,18 +323,6 @@ public class Main {
             LOGGER.error("error initialising result reporting",x);
         }
 
-        // see whether vulnerability verification is available
-        Path verificationProjectTemplateFolder = null;
-        if (cmd.hasOption("vulnerabilitydemo")) {
-            verificationProjectTemplateFolder = Path.of(cmd.getOptionValue("vulnerabilitydemo"));
-            try {
-                checkVerificationProject(verificationProjectTemplateFolder);
-                LOGGER.info("vulnerability verification project is not valid");
-            }
-            catch (Exception x) {
-                LOGGER.error("vulnerability verification project is valid");
-            }
-        }
         Path verificationProjectInstancesFolderStaging = null;
         if (cmd.hasOption("vulnerabilityoutput_staging")) {
             verificationProjectInstancesFolderStaging = Path.of(cmd.getOptionValue("vulnerabilityoutput_staging"));
@@ -285,22 +338,20 @@ public class Main {
         assert verificationProjectInstancesFolderStaging!=null;
 
 
-        // set up signal
+        // set up signal (may already have been read from pov-projects.json)
         String vulnerabilitySignalAsString = cmd.getOptionValue("vulnerabilitysignal");
-        vulnerabilitySignalAsString = vulnerabilitySignalAsString.toUpperCase();
-        TestSignal expectedTestSignal = null;
-        if (vulnerabilitySignalAsString.equals("AUTO")) {
-            Path povMetadata = verificationProjectTemplateFolder.resolve("pov-project.json");
-            try {
-                PovProject povMetaData = PovProjectParser.parse(povMetadata.toFile());
-                expectedTestSignal = povMetaData.getTestSignalWhenVulnerable();
-            } catch (FileNotFoundException e) {
-                LOGGER.error("Error instantiating test signal from pov meta data");
+        if (vulnerabilitySignalAsString != null) {
+            vulnerabilitySignalAsString = vulnerabilitySignalAsString.toUpperCase();
+            if (!vulnerabilitySignalAsString.equals("AUTO")) { // "auto" is now the default; ignore here for backcompat
+                expectedTestSignal = TestSignal.valueOf(vulnerabilitySignalAsString); // will throw illegal argument exception if no such constant exists
             }
         }
-        else {
-            expectedTestSignal = TestSignal.valueOf(vulnerabilitySignalAsString); // will throw illegal argument exception if no such constant exists
+
+        if (expectedTestSignal == null) {
+            LOGGER.error("could not determine testSignalWhenVulnerable from the pov-project.json metadata, and --vulnerabilitysignal was not specified");
+            System.exit(1);
         }
+
         LOGGER.info("test signal is {}",expectedTestSignal);
         assert expectedTestSignal != null;
 

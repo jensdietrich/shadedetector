@@ -32,16 +32,17 @@ The project must be build with Java 11 or better. To build run `mvn package`. Th
 ## Running 
 
 ```
-usage: java -cp <classpath> Main -a <arg> [-c <arg>] [-env <arg>] -g <arg> [-o <arg>] [-o1 <arg>] [-o2 <arg>] [-o3 <arg>] [-ps <arg>] [-r <arg>] [-s
-       <arg>] -v <arg> [-vg <arg>] -vos <arg> -vov <arg> -vul <arg> [-vv <arg>]
+usage: java -cp <classpath> Main [-a <arg>] [-c <arg>] [-cache <arg>] [-env <arg>] [-g <arg>] [-l <arg>] [-o <arg>] [-o1 <arg>] [-o2 <arg>] [-o3
+       <arg>] [-ps <arg>] [-r <arg>] [-s <arg>] [-sig <arg>] [-v <arg>] [-vg <arg>] -vos <arg> -vov <arg> -vul <arg> [-vv <arg>]
 Arguments:
 
- -a,--artifact <arg>                        the Maven artifact id of the artifact queried for clones
+ -a,--artifact <arg>                        the Maven artifact id of the artifact queried for clones (default read from PoV's pov-project.json)
  -c,--clonedetector <arg>                   the clone detector to be used (optional, default is "ast")
- -sig, --vulnerabilitysignal                indicates the test signal indicating that the vulnerability is present, must be of one of "error", "success" or "failure" (case-insensitive)
+ -cache,--cachedir <arg>                    path to root of cache folder hierarchy (default is ".cache")
  -env,--testenvironment <arg>               a property file defining environment variables used when running tests on generated projects used to
                                             verify vulnerabilities, for instance, this can be used to set the Java version
- -g,--group <arg>                           the Maven group id of the artifact queried for clones
+ -g,--group <arg>                           the Maven group id of the artifact queried for clones (default read from PoV's pov-project.json)
+ -l,--log <arg>                             a log file name (optional, if missing logs will only be written to console)
  -o,--output <arg>                          the component used to process and report results (optional, default is "log")
  -o1,--output1 <arg>                        an additional component used to process and report results
  -o2,--output2 <arg>                        an additional component used to process and report results
@@ -49,17 +50,17 @@ Arguments:
  -ps,--stats <arg>                          the file to which progress stats will be written (default is "stats.log")
  -r,--resultconsolidation <arg>             the query result consolidation strategy to be used (optional, default is "moreThanOne")
  -s,--classselector <arg>                   the strategy used to select classes (optional, default is"complexnames")
- -v,--version <arg>                         the Maven version of the artifact queried for clones
+ -sig,--vulnerabilitysignal <arg>           indicates the test signal indicating that the vulnerability is present, must be of one of:
+                                            SUCCESS,FAILURE,ERROR (default read from testSignalWhenVulnerable in PoV's pov-project.json)
+ -v,--version <arg>                         the Maven version of the artifact queried for clones (default read from PoV's pom.xml)
  -vg,--vulnerabilitygroup <arg>             the group name used in the projects generated to verify the presence of a vulnerability (default is "foo")
  -vos,--vulnerabilityoutput_staging <arg>   the root folder where for each clone, a project verifying the presence of a vulnerability is created
  -vov,--vulnerabilityoutput_final <arg>     the root folder where for each clone, a project created in the staging folder will be moved to if
                                             verification succeeds (i.e. if the vulnerability is shown to be present)
  -vul,--vulnerabilitydemo <arg>             a folder containing a Maven project that verifies a vulnerability in the original library with test(s),
-                                            and can be used as a template to verify the presence of the vulnerability in a clone
+                                            and can be used as a template to verify the presence of the vulnerability in a clone; values for -g, -a,
+                                            -v and -sig are read from any contained pov-project.json
  -vv,--vulnerabilityversion <arg>           the version used in the projects generated to verify the presence of a vulnerability (default is "0.0.1")
- -ps,--stats                                the file to which progress stats will be written (default is stats.log)
- -l,--log                                   a log file name (optional, if missing logs will only be written to console)
- -cache,--cachedir <arg>                    path to root of cache folder hierarchy (default is ".cache")
 ```
  
 ## Setting the Environment

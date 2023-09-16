@@ -120,6 +120,12 @@ public class TempDirectory {
 
     // Ensure that all temp dirs are deleted before the program exits. Based on java.io.DeleteOnExitHook.
     static {
-        Runtime.getRuntime().addShutdownHook(new Thread(TempDirectory::deleteAll));
+//        Runtime.getRuntime().addShutdownHook(new Thread(TempDirectory::deleteAll));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            // Can't use LOGGER -- it may have been cleaned up by now
+            System.err.println("TempDirectory: About to delete temp dirs for " + dirsByPrefix.size() + " prefixes");
+            deleteAll();
+            System.err.println("TempDirectory: Finished deleting temp dirs");
+        }));
     }
 }

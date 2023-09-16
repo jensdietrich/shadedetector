@@ -105,21 +105,24 @@ public class Utils {
     }
 
     public static List<Path> listContent(Path zipOrFolder, Predicate<Path> filter) throws IOException {
-        if (zipOrFolder.toFile().isDirectory()) {
-            return Files.walk(zipOrFolder)
+        return Files.walk(extractFromZipToTempDir(zipOrFolder))
                 .filter(file -> !Files.isDirectory(file))
                 .filter(filter)
                 .collect(Collectors.toList());
+    }
+
+    // A bug in jdk.zipfs causes OutOfMemoryError on some (specially crafted?) jar files, so just
+    // extract the jar manually instead. See https://github.com/jensdietrich/shadedetector/issues/18.
+    public static Path extractFromZipToTempDir(Path zipOrFolder) throws IOException {
+        if (zipOrFolder.toFile().isDirectory()) {
+            return zipOrFolder;
         }
         else {
-            // A bug in jdk.zipfs causes OutOfMemoryError on some (specially crafted?) jar files, so just
-            // extract the jar manually instead. See https://github.com/jensdietrich/shadedetector/issues/18.
             Path tempDir = TempDirectory.create("ziptmp");
             LOGGER.debug("Unzipping {} to {}, will delete on exit", zipOrFolder, tempDir);
             new ZipFile(zipOrFolder.toFile()).extractAll(tempDir.toString());
-            return listContent(tempDir, filter);
+            return tempDir;
         }
-
     }
 
 

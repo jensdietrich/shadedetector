@@ -24,3 +24,4 @@ run-on-java8.properties
 .cache
 .generated
 results2
+/runs/

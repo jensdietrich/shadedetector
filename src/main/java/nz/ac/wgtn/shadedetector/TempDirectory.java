@@ -19,11 +19,11 @@ import java.util.LinkedHashMap;
  */
 public class TempDirectory {
     private static Logger LOGGER = LoggerFactory.getLogger(Cache.class);
-    static private Path TEMP_ROOT = Cache.getRoot().toPath();
+    private static Path TEMP_ROOT = Cache.getRoot().toPath();
 
-    static private HashMap<String, ArrayList<Path>> dirsByPrefix = new LinkedHashMap<>();
+    private static HashMap<String, ArrayList<Path>> dirsByPrefix = new LinkedHashMap<>();
 
-    static public Path create(String prefix) throws IOException {
+    public static Path create(String prefix) throws IOException {
         Path tempDir = Files.createTempDirectory(TEMP_ROOT, prefix);
         //TODO: Make dirsByPrefix update threadsafe
         if (!dirsByPrefix.containsKey(prefix)) {
@@ -38,7 +38,7 @@ public class TempDirectory {
      * This method may be slow, since it iterates the complete list of all paths with the given prefix.
      * @return true if the dir was successfully deleted, false otherwise
      */
-    static public boolean delete(String prefix, Path dir) {
+    public static boolean delete(String prefix, Path dir) {
         if (!dirsByPrefix.containsKey(prefix) || !dirsByPrefix.get(prefix).remove(dir)) {
             return false;
         }
@@ -51,7 +51,7 @@ public class TempDirectory {
      * Prefer calling this once to calling delete() on each directory.
      * @return true if all dirs were successfully deleted, false otherwise
      */
-    static public boolean deleteAllForPrefix(String prefix) {
+    public static boolean deleteAllForPrefix(String prefix) {
         if (!dirsByPrefix.containsKey(prefix)) {
             return true;
         }
@@ -69,7 +69,7 @@ public class TempDirectory {
      * Recursively delete all temp directories created with any prefix.
      * @return true if all dirs were successfully deleted, false otherwise
      */
-    static public boolean deleteAll() {
+    public static boolean deleteAll() {
         boolean success = true;
         for (String prefix : dirsByPrefix.keySet()) {
             success = deleteAllForPrefix(prefix) && success;
@@ -79,7 +79,7 @@ public class TempDirectory {
         return success;
     }
 
-    static private boolean recursivelyDeleteQuietly(File dirOrFile) {
+    private static boolean recursivelyDeleteQuietly(File dirOrFile) {
         try {
             recursivelyDelete(dirOrFile);
         } catch (IOException e) {
@@ -91,7 +91,7 @@ public class TempDirectory {
     }
 
     // From https://stackoverflow.com/a/779529/47984
-    static private void recursivelyDelete(File dirOrFile) throws FileNotFoundException {
+    private static void recursivelyDelete(File dirOrFile) throws FileNotFoundException {
         if (dirOrFile.isDirectory()) {
             for (File c : dirOrFile.listFiles()) {
                 recursivelyDelete(c);
@@ -103,5 +103,8 @@ public class TempDirectory {
         }
     }
 
-    //TODO: Actually register a handler for the end times!
+    // Ensure that all temp dirs are deleted before the program exits. Based on java.io.DeleteOnExitHook.
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread(TempDirectory::deleteAll));
+    }
 }

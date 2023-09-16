@@ -18,14 +18,29 @@ import java.util.LinkedHashMap;
  * This class also gives more control over when the directories are deleted.
  */
 public class TempDirectory {
-    private static Logger LOGGER = LoggerFactory.getLogger(Cache.class);
-    private static Path TEMP_ROOT = Cache.getRoot().toPath();
+    private static final Logger LOGGER = LoggerFactory.getLogger(Cache.class);
+    private static Path TEMP_ROOT = null;   // Set lazily in getRoot() to pick up -cache from command line
 
     private static HashMap<String, ArrayList<Path>> dirsByPrefix = new LinkedHashMap<>();
 
-    public static Path create(String prefix) throws IOException {
-        Path tempDir = Files.createTempDirectory(TEMP_ROOT, prefix);
-        //TODO: Make dirsByPrefix update threadsafe
+    public static synchronized Path getRoot() {
+        if (TEMP_ROOT == null) {
+            setRoot(Cache.getRoot().toPath());
+        }
+
+        return TEMP_ROOT;
+    }
+
+    public static synchronized void setRoot(Path newRoot) throws IllegalStateException {
+        if (TEMP_ROOT != null) {
+            throw new IllegalStateException("Attempt to set TempDirectory root more than once");
+        }
+
+        TEMP_ROOT = newRoot;
+    }
+
+    public static synchronized Path create(String prefix) throws IOException {
+        Path tempDir = Files.createTempDirectory(getRoot(), prefix);
         if (!dirsByPrefix.containsKey(prefix)) {
             dirsByPrefix.put(prefix, new ArrayList<>());
         }
@@ -38,7 +53,7 @@ public class TempDirectory {
      * This method may be slow, since it iterates the complete list of all paths with the given prefix.
      * @return true if the dir was successfully deleted, false otherwise
      */
-    public static boolean delete(String prefix, Path dir) {
+    public static synchronized boolean delete(String prefix, Path dir) {
         if (!dirsByPrefix.containsKey(prefix) || !dirsByPrefix.get(prefix).remove(dir)) {
             return false;
         }
@@ -51,7 +66,7 @@ public class TempDirectory {
      * Prefer calling this once to calling delete() on each directory.
      * @return true if all dirs were successfully deleted, false otherwise
      */
-    public static boolean deleteAllForPrefix(String prefix) {
+    public static synchronized boolean deleteAllForPrefix(String prefix) {
         if (!dirsByPrefix.containsKey(prefix)) {
             return true;
         }
@@ -69,7 +84,7 @@ public class TempDirectory {
      * Recursively delete all temp directories created with any prefix.
      * @return true if all dirs were successfully deleted, false otherwise
      */
-    public static boolean deleteAll() {
+    public static synchronized boolean deleteAll() {
         boolean success = true;
         for (String prefix : dirsByPrefix.keySet()) {
             success = deleteAllForPrefix(prefix) && success;

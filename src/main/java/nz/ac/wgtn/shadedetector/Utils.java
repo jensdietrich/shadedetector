@@ -114,8 +114,7 @@ public class Utils {
         else {
             // A bug in jdk.zipfs causes OutOfMemoryError on some (specially crafted?) jar files, so just
             // extract the jar manually instead. See https://github.com/jensdietrich/shadedetector/issues/18.
-            Path tempDir = Files.createTempDirectory(Cache.getRoot().toPath(), "ziptmp");
-            tempDir.toFile().deleteOnExit();
+            Path tempDir = TempDirectory.create("ziptmp");
             LOGGER.debug("Unzipping {} to {}, will delete on exit", zipOrFolder, tempDir);
             new ZipFile(zipOrFolder.toFile()).extractAll(tempDir.toString());
             return listContent(tempDir, filter);

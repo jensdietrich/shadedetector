@@ -122,7 +122,9 @@ public class Utils {
     public static Path extractFromZipToTempDir(Path zipFile) throws IOException {
         Path tempDir = TempDirectory.create("ziptmp");
         LOGGER.debug("Unzipping {} to {}, will delete on exit", zipFile, tempDir);
-        new ZipFile(zipFile.toFile()).extractAll(tempDir.toString());
+        try (ZipFile zip = new ZipFile(zipFile.toFile())) {
+            zip.extractAll(tempDir.toString());
+        }
         return tempDir;
     }
 

@@ -1,7 +1,8 @@
 package nz.ac.wgtn.shadedetector;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Streams;
+import net.lingala.zip4j.ZipFile;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -21,15 +22,11 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 import java.io.*;
 import java.net.URL;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.nio.file.FileSystem;
 
 /**
  * Miscellaneous utilities.
@@ -109,30 +106,26 @@ public class Utils {
     }
 
     public static List<Path> listContent(Path zipOrFolder, Predicate<Path> filter) throws IOException {
-        if (zipOrFolder.toFile().isDirectory()) {
-            return Files.walk(zipOrFolder)
+        return Files.walk(extractFromZipToTempDirIfNecessary(zipOrFolder))
                 .filter(file -> !Files.isDirectory(file))
                 .filter(filter)
                 .collect(Collectors.toList());
-        }
-        else {
-            // use API in Java <= 11
-            FileSystem fs = FileSystems.newFileSystem(zipOrFolder, Utils.class.getClassLoader());
-            return Streams.stream(fs.getRootDirectories())
-                .flatMap(root -> {
-                    try {
-                        return Files.walk(root);
-                    }
-                    catch (IOException x) {
-                        LOGGER.error("Error extracting content of file system",x);
-                        throw new RuntimeException(x);
-                    }
-                })
-                .filter(filter)
-                .collect(Collectors.toList());
+    }
 
-        }
+    // A bug in jdk.zipfs causes OutOfMemoryError on some (specially crafted?) jar files, so just
+    // extract the jar manually instead. See https://github.com/jensdietrich/shadedetector/issues/18.
+    public static Path extractFromZipToTempDirIfNecessary(Path zipOrFolder) throws IOException {
+        return zipOrFolder.toFile().isDirectory() ? zipOrFolder : extractFromZipToTempDir(zipOrFolder);
+    }
 
+    @NotNull
+    public static Path extractFromZipToTempDir(Path zipFile) throws IOException {
+        Path tempDir = TempDirectory.create("ziptmp");
+        LOGGER.debug("Unzipping {} to {}, will delete on exit", zipFile, tempDir);
+        try (ZipFile zip = new ZipFile(zipFile.toFile())) {
+            zip.extractAll(tempDir.toString());
+        }
+        return tempDir;
     }
 
 

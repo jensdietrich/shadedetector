@@ -258,7 +258,7 @@ public class Main {
         // find sources
         Path originalSources = null;
         try {
-            originalSources = FetchResources.fetchSources(artifact);
+            originalSources = Utils.extractFromZipToTempDir(FetchResources.fetchSources(artifact));
         } catch (IOException e) {
             LOGGER.error("cannot fetch sources for " + gav.asString(),e);
         }
@@ -402,7 +402,7 @@ public class Main {
             }
             else {
                 try {
-                    Path src = FetchResources.fetchSources(match);
+                    Path src = Utils.extractFromZipToTempDir(FetchResources.fetchSources(match));
                     sources = Utils.listJavaSources(src, true);
                     cloneAnalysesResults = cloneDetector.detect(originalSources, src);
 

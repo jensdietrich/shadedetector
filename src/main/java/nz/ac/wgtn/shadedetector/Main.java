@@ -154,11 +154,14 @@ public class Main {
                 // Here we assume it's the only dependency with matching groupId and artifactId mentioned in pom.xml.
                 try {
                     List<MVNDependency> possibleArtifactsUnderTest = POMAnalysis.getMatchingDependencies(verificationProjectTemplateFolder.resolve("pom.xml").toFile(), dep -> dep.getGroupId().equals(groupIdFromMetadata) && dep.getArtifactId().equals(artifactIdFromMetadata));
+                    String versionFromMetadata = null;
                     if (possibleArtifactsUnderTest.size() != 1) {
                         LOGGER.error("Found {} dependency artifacts in PoV matching {}:{}, was expecting 1", possibleArtifactsUnderTest.size(), groupIdFromMetadata, artifactIdFromMetadata);
-                        System.exit(1);
+                        // Fall through. version will remain null unless specified by user with -v
                     }
-                    String versionFromMetadata = possibleArtifactsUnderTest.get(0).getVersion();
+                    else {
+                        versionFromMetadata = possibleArtifactsUnderTest.get(0).getVersion();
+                    }
                     groupId = groupIdFromMetadata;
                     artifactId = artifactIdFromMetadata;
                     version = versionFromMetadata;

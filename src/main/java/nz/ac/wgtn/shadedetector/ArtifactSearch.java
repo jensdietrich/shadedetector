@@ -56,7 +56,7 @@ public class ArtifactSearch {
 
         // for testing only -- query versions
 
-        ArtifactSearchResponse results = findVersions("org.apache.commons","commons-collections4",1,ROWS_PER_BATCH);
+        ArtifactSearchResponse results = findVersions("org.apache.commons","commons-collections4");
         LOGGER.info("Versions found: {}",results.getBody().getArtifacts().size());
 
 
@@ -87,8 +87,8 @@ public class ArtifactSearch {
         return result;
     }
 
-    static ArtifactSearchResponse findVersions (String groupName, String artifactName, int batchCount,int maxResultsInEachBatch) throws ArtifactSearchException {
-        List<File> cachedResultFiles = getCachedOrFetchByGroupAndArtifactId(groupName,artifactName,batchCount,maxResultsInEachBatch);
+    static ArtifactSearchResponse findVersions (String groupName, String artifactName) throws ArtifactSearchException {
+        List<File> cachedResultFiles = getCachedOrFetchByGroupAndArtifactId(groupName, artifactName, ROWS_PER_BATCH);
         List<ArtifactSearchResponse> results = cachedResultFiles.stream().map(f -> parse(f)).collect(Collectors.toList());
         ArtifactSearchResponse result = ArtifactSearchResponseMerger.merge(results);
         LOGGER.info("\t{} versions found of \"{}:{}",result.getBody().getArtifacts().size(),groupName,artifactName);
@@ -125,7 +125,7 @@ public class ArtifactSearch {
     }
 
 
-    private static List<File> getCachedOrFetchByGroupAndArtifactId(String groupId,String artifactId, int batchCount, int maxResultsInEachBatch) throws ArtifactSearchException {
+    private static List<File> getCachedOrFetchByGroupAndArtifactId(String groupId,String artifactId, int maxResultsInEachBatch) throws ArtifactSearchException {
         List<File> cached = getCachedByGroupAndArtifactId(groupId,artifactId);
         if (!cached.isEmpty()) {
             LOGGER.info("using cached data from " + cached.stream().map(f -> f.getAbsolutePath()).collect(Collectors.joining(", ")));
@@ -133,7 +133,8 @@ public class ArtifactSearch {
         else {
             OkHttpClient client = new OkHttpClient();
             cached = new ArrayList<>();
-            for (int i=0;i<batchCount;i++) {
+            int batchCount = -1;    // -1 means we don't know how many batches there will be yet
+            for (int i = 0; batchCount == -1 || i < batchCount; i++) {
                 LOGGER.info("\tfetching batch {}/{}",i+1,batchCount);
 
                 // https://search.maven.org/solrsearch/select?q=g:com.google.inject+AND+a:guice&core=gav&rows=20&wt=json
@@ -168,6 +169,14 @@ public class ArtifactSearch {
                         cached.add(cache);
                     } catch (IOException x) {
                         throw new ArtifactSearchException("cannot read and cache response" + x);
+                    }
+
+                    // If we made it to here, the file was written and closed.
+                    if (batchCount == -1) {
+                        ArtifactSearchResponse firstResponse = parse(cache);
+                        int numFound = firstResponse.getBody().getNumFound();
+                        batchCount = (numFound + maxResultsInEachBatch - 1) / maxResultsInEachBatch;
+                        LOGGER.info("\tdiscovered there are {} results, so {} batches needed", numFound, batchCount);
                     }
                 } else {
                     throw new ArtifactSearchException("query returned unexpected status code " + responseCode + " - " + response.message());

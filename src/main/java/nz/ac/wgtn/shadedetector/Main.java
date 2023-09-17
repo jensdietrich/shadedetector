@@ -240,7 +240,7 @@ public class Main {
         Artifact artifact = null;
         try {
             // note: fetching artifacts for all versions could be postponed
-            ArtifactSearchResponse response = ArtifactSearch.findVersions(groupId,artifactId,1,ArtifactSearch.ROWS_PER_BATCH);
+            ArtifactSearchResponse response = ArtifactSearch.findVersions(groupId,artifactId);
             allVersions = response.getBody().getArtifacts();
             final String finalVersion = version;    // To make the compiler happy compiling a lambda
             artifact = allVersions.stream()

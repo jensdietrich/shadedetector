@@ -2,6 +2,7 @@ package nz.ac.wgtn.shadedetector;
 
 import com.google.common.base.Preconditions;
 import net.lingala.zip4j.ZipFile;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -105,7 +106,7 @@ public class Utils {
     }
 
     public static List<Path> listContent(Path zipOrFolder, Predicate<Path> filter) throws IOException {
-        return Files.walk(extractFromZipToTempDir(zipOrFolder))
+        return Files.walk(extractFromZipToTempDirIfNecessary(zipOrFolder))
                 .filter(file -> !Files.isDirectory(file))
                 .filter(filter)
                 .collect(Collectors.toList());
@@ -113,16 +114,16 @@ public class Utils {
 
     // A bug in jdk.zipfs causes OutOfMemoryError on some (specially crafted?) jar files, so just
     // extract the jar manually instead. See https://github.com/jensdietrich/shadedetector/issues/18.
-    public static Path extractFromZipToTempDir(Path zipOrFolder) throws IOException {
-        if (zipOrFolder.toFile().isDirectory()) {
-            return zipOrFolder;
-        }
-        else {
-            Path tempDir = TempDirectory.create("ziptmp");
-            LOGGER.debug("Unzipping {} to {}, will delete on exit", zipOrFolder, tempDir);
-            new ZipFile(zipOrFolder.toFile()).extractAll(tempDir.toString());
-            return tempDir;
-        }
+    public static Path extractFromZipToTempDirIfNecessary(Path zipOrFolder) throws IOException {
+        return zipOrFolder.toFile().isDirectory() ? zipOrFolder : extractFromZipToTempDir(zipOrFolder);
+    }
+
+    @NotNull
+    public static Path extractFromZipToTempDir(Path zipFile) throws IOException {
+        Path tempDir = TempDirectory.create("ziptmp");
+        LOGGER.debug("Unzipping {} to {}, will delete on exit", zipFile, tempDir);
+        new ZipFile(zipFile.toFile()).extractAll(tempDir.toString());
+        return tempDir;
     }
 
 

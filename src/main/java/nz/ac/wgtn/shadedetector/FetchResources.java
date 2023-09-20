@@ -31,7 +31,7 @@ public class FetchResources {
     // for testing only
     // @TODO remove
     public static void main(String[] args) throws ArtifactSearchException {
-        ArtifactSearchResponse artifactSearchResult = ArtifactSearch.findShadingArtifacts("InvokerTransformer",5,200);
+        ArtifactSearchResponse artifactSearchResult = ArtifactSearch.findShadingArtifacts("InvokerTransformer",gav->true,5,200);
         AtomicInteger allCounter = new AtomicInteger();
         AtomicInteger fetchSuccessCounter = new AtomicInteger();
         AtomicInteger fetchSuccessButNotAZipCounter = new AtomicInteger();

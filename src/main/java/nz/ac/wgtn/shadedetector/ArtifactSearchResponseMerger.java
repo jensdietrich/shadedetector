@@ -2,6 +2,7 @@ package nz.ac.wgtn.shadedetector;
 
 
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -38,5 +39,36 @@ public class ArtifactSearchResponseMerger {
        merged.setBody(mergedBody);
 
        return merged;
+   }
+
+    /**
+     * Strip out artifacts with GAVs that do not match a predicate.
+     * (Not strictly to do with merging artifact search responses, but massaging them a different way.)
+     * Based heavily on {@link #merge(List)}.
+     * @return a reconstructed artifact search response containing only artifacts from {@code response} with GAVs satisfying {@code gavPredicate}
+     */
+   public static ArtifactSearchResponse filterArtifacts(ArtifactSearchResponse response, Predicate<String> gavPredicate) {
+       // Header parameters
+       ResponseHeader.Parameters newParameters = new ResponseHeader.Parameters();
+       newParameters.setRows(response.getHeader().getParameters().getRows());
+
+       // Header
+       ResponseHeader newHeader = new ResponseHeader();
+       newHeader.setQtime(response.getHeader().getQtime());
+       newHeader.setStatus(response.getHeader().getStatus());
+       newHeader.setParameters(newParameters);
+
+       // Body
+       ResponseBody newBody = new ResponseBody();
+       newBody.setArtifacts(response.getBody().getArtifacts().stream()
+               .filter(artifact -> gavPredicate.test(artifact.toString()))    // Do the actual work :-/
+               .collect(Collectors.toList()));
+       newBody.setNumFound(newBody.getArtifacts().size());
+       newBody.setStart(response.getBody().getStart());
+
+       ArtifactSearchResponse newResponse = new ArtifactSearchResponse();
+       newResponse.setHeader(newHeader);
+       newResponse.setBody(newBody);
+       return newResponse;
    }
 }

@@ -67,7 +67,7 @@ public class ArtifactSearch {
      * Find candidate artifacts based on class names they share with the PoV project.
      * @return a mapping of class names to the artifact search responses they generated
      */
-    static Map<String,ArtifactSearchResponse> findShadingArtifacts (Path projectSources, ClassSelector classSelector, Predicate<String> classNamePredicate, int maxClassesUsedForSearch, int batchCount, int maxResultsInEachBatch) {
+    static Map<String,ArtifactSearchResponse> findShadingArtifacts (Path projectSources, ClassSelector classSelector, Predicate<String> classNamePredicate, Predicate<String> gavPredicate, int maxClassesUsedForSearch, int batchCount, int maxResultsInEachBatch) {
         List<String> classNamesSelectedForSearch = classSelector.selectForSearch(projectSources);
         List<String> cappedClassNamesSelectedForSearch = classNamesSelectedForSearch.stream()
                 .filter(classNamePredicate)
@@ -77,7 +77,7 @@ public class ArtifactSearch {
         for (String className:cappedClassNamesSelectedForSearch) {
             LOGGER.info("querying for uses of class " + className);
             try {
-                responses.put(className, findShadingArtifacts(className, batchCount,maxResultsInEachBatch));
+                responses.put(className, findShadingArtifacts(className, gavPredicate, batchCount, maxResultsInEachBatch));
             }
             catch (ArtifactSearchException x) {
                 LOGGER.error("artifact search for class " + className + " has failed",x);
@@ -87,9 +87,12 @@ public class ArtifactSearch {
 
     }
 
-    static ArtifactSearchResponse findShadingArtifacts (String className, int batchCount,int maxResultsInEachBatch) throws ArtifactSearchException {
+    static ArtifactSearchResponse findShadingArtifacts (String className, Predicate<String> gavPredicate, int batchCount, int maxResultsInEachBatch) throws ArtifactSearchException {
         List<File> cachedResultFiles = getCachedOrFetchByClass(className,batchCount,maxResultsInEachBatch);
-        List<ArtifactSearchResponse> results = cachedResultFiles.stream().map(f -> parse(f)).collect(Collectors.toList());
+        List<ArtifactSearchResponse> results = cachedResultFiles.stream()
+                .map(f -> parse(f))
+                .map(response -> ArtifactSearchResponseMerger.filterArtifacts(response, gavPredicate))
+                .collect(Collectors.toList());
         ArtifactSearchResponse result = ArtifactSearchResponseMerger.merge(results);
         LOGGER.info("\t{} artifacts found with a class named \"{}\"",result.getBody().getArtifacts().size(),className);
         return result;

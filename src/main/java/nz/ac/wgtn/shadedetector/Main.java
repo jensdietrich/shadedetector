@@ -292,16 +292,13 @@ public class Main {
         // find all potentially matching artifacts
         Map<String,ArtifactSearchResponse> matches = null;
         try {
-            matches = ArtifactSearch.findShadingArtifacts(originalSources, classSelector, classNamePredicate, 10, ArtifactSearch.BATCHES, ArtifactSearch.ROWS_PER_BATCH);
+            matches = ArtifactSearch.findShadingArtifacts(originalSources, classSelector, classNamePredicate, gavPredicate, 10, ArtifactSearch.BATCHES, ArtifactSearch.ROWS_PER_BATCH);
         }
         catch (Exception e) {
             LOGGER.error("cannot fetch artifacts with matching classes from {}",gav,e);
         }
 
-        Set<Artifact> allMatches = matches.values().stream()
-                .flatMap(response -> response.getBody().getArtifacts().stream())
-                .filter(art -> gavPredicate.test(art.toString()))
-                .collect(Collectors.toSet());
+        Set<Artifact> allMatches = matches.values().stream().flatMap(response -> response.getBody().getArtifacts().stream()).collect(Collectors.toSet());
         progressReporter.artifactsProcessed(ProcessingStage.QUERY_RESULTS,allMatches);
 
         // consolidate results

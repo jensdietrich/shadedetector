@@ -108,8 +108,12 @@ public class TempDirectory {
     // From https://stackoverflow.com/a/779529/47984
     private static void recursivelyDelete(File dirOrFile) throws FileNotFoundException {
         if (dirOrFile.isDirectory()) {
-            for (File c : dirOrFile.listFiles()) {
-                recursivelyDelete(c);
+            File[] files = dirOrFile.listFiles();
+            // It couldn't possibly be null, could it? Yes it could: https://github.com/jensdietrich/shadedetector/issues/24
+            if (files != null) {
+                for (File c : files) {
+                    recursivelyDelete(c);
+                }
             }
         }
 

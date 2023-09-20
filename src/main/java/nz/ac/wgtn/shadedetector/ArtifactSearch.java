@@ -112,7 +112,6 @@ public class ArtifactSearch {
             return alreadyCached.get();
         }
         else {
-            OkHttpClient client = new OkHttpClient();
             List<File> newFiles = new ArrayList<>();
             try {
                 // Download data to a temp dir, then rename when it is complete.

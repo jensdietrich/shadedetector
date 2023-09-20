@@ -33,7 +33,7 @@ public class ArtifactSearchResponseMerger {
        // merge body
        ResponseBody mergedBody = new ResponseBody();
        mergedBody.setArtifacts(responses.stream().flatMap(r -> r.getBody().getArtifacts().stream()).collect(Collectors.toList()));
-       mergedBody.setNumFound(responses.stream().mapToInt(r -> r.getBody().getNumFound()).reduce(Integer::sum).orElse(0));
+       mergedBody.setNumFound(responses.stream().mapToInt(r -> r.getBody().getNumFound()).reduce(Integer::min).orElse(0));
        mergedBody.setStart(responses.stream().mapToInt(r -> r.getBody().getStart()).reduce(Integer::min).orElse(0));
        merged.setBody(mergedBody);
 

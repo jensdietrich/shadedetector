@@ -60,7 +60,7 @@ public class FetchResources {
     public static Path fetchBinaries (Artifact artifact) throws IOException {
         GAV gav = new GAV(artifact.getGroupId(),artifact.getArtifactId(),artifact.getVersion());
         if (!artifact.getResources().contains(".jar")) {
-            throw new IllegalStateException("no source code found for artifact " + artifact.getId());
+            throw new IllegalStateException("no binaries found for artifact " + artifact.getId());
         }
         Path cached = getCachedBin(gav,"jar");
         return fetch(gav,cached,".jar");
@@ -69,7 +69,7 @@ public class FetchResources {
     public static Path fetchPOM (Artifact artifact) throws IOException {
         GAV gav = new GAV(artifact.getGroupId(),artifact.getArtifactId(),artifact.getVersion());
         if (!artifact.getResources().contains(".pom")) {
-            throw new IllegalStateException("no source code found for artifact " + artifact.getId());
+            throw new IllegalStateException("no POM found for artifact " + artifact.getId());
         }
         Path cached = getCachedPOM(gav,".pom");
         return fetchPOM(gav);

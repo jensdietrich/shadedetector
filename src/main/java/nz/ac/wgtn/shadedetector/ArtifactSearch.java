@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -62,9 +63,16 @@ public class ArtifactSearch {
 
     }
 
-    static Map<String,ArtifactSearchResponse> findShadingArtifacts (Path projectSources, ClassSelector classSelector, int maxClassesUsedForSearch, int batchCount, int maxResultsInEachBatch) {
+    /**
+     * Find candidate artifacts based on class names they share with the PoV project.
+     * @return a mapping of class names to the artifact search responses they generated
+     */
+    static Map<String,ArtifactSearchResponse> findShadingArtifacts (Path projectSources, ClassSelector classSelector, Predicate<String> classNamePredicate, int maxClassesUsedForSearch, int batchCount, int maxResultsInEachBatch) {
         List<String> classNamesSelectedForSearch = classSelector.selectForSearch(projectSources);
-        List<String> cappedClassNamesSelectedForSearch = classNamesSelectedForSearch.stream().limit(maxClassesUsedForSearch).collect(Collectors.toList());
+        List<String> cappedClassNamesSelectedForSearch = classNamesSelectedForSearch.stream()
+                .filter(classNamePredicate)
+                .limit(maxClassesUsedForSearch)
+                .collect(Collectors.toList());
         Map<String,ArtifactSearchResponse> responses = new HashMap<>();
         for (String className:cappedClassNamesSelectedForSearch) {
             LOGGER.info("querying for uses of class " + className);

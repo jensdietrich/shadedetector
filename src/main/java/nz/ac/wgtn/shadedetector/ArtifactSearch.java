@@ -116,6 +116,7 @@ public class ArtifactSearch {
             try {
                 // Download data to a temp dir, then rename when it is complete.
                 Path tempDir = Files.createTempDirectory(CACHE_BY_CLASSNAME.toPath(), "tmp.");
+                Path finalDir = CACHE_BY_CLASSNAME.toPath().resolve(className);
                 LOGGER.debug("\tfetching to temp dir {}", tempDir);
 
                 for (int i=0;i<batchCount;i++) {
@@ -128,15 +129,17 @@ public class ArtifactSearch {
                     urlBuilder.addQueryParameter("start",""+((maxResultsInEachBatch*i)+1));
 
                     String url = urlBuilder.build().toString();
-                    File cachedElement = new File(tempDir.toFile(),className+'-'+(i+1)+".json");
+                    String basename = className+'-'+(i+1)+".json";
+                    File cachedElementTemp = new File(tempDir.toFile(),basename);
+                    File cachedElementFinal = new File(finalDir.toFile(),basename);
                     try {
-                        newFiles.add(MvnRestAPIClient.fetchCharData(url,cachedElement.toPath()).toFile());
+                        MvnRestAPIClient.fetchCharData(url,cachedElementTemp.toPath());
+                        newFiles.add(cachedElementFinal);
                     } catch (IOException x) {
                         throw new ArtifactSearchException("fetch of batch " + (i+1) + " failed", x);   // Temp dir will remain
                     }
                 }
 
-                Path finalDir = CACHE_BY_CLASSNAME.toPath().resolve(className);
                 Files.move(tempDir, finalDir);  // Should work since source and target are on same FileStore
                 LOGGER.debug("renamed temp dir {} to {} successfully", tempDir, finalDir);
             } catch (IOException x) {

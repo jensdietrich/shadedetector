@@ -127,10 +127,10 @@ public class Main {
             verificationProjectTemplateFolder = Path.of(cmd.getOptionValue("vulnerabilitydemo"));
             try {
                 checkVerificationProject(verificationProjectTemplateFolder);
-                LOGGER.info("vulnerability verification project is not valid");
+                LOGGER.info("vulnerability verification project is valid");
             }
             catch (Exception x) {
-                LOGGER.error("vulnerability verification project is valid");
+                LOGGER.error("vulnerability verification project is not valid");
             }
         }
 

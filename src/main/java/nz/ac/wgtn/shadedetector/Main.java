@@ -85,6 +85,9 @@ public class Main {
 
         options.addOption("sig","vulnerabilitysignal",true,"indicates the test signal indicating that the vulnerability is present, must be of one of: " + Stream.of(TestSignal.values()).map(v -> v.name()).collect(Collectors.joining(",")) + " (default read from testSignalWhenVulnerable in PoV's pov-project.json)");
 
+        options.addOption("fc", "filterclassnames", true, "a regex restricting the class names to be considered (non-matching class names will be discarded). For debugging.");
+        options.addOption("fa", "filterartifacts", true, "a regex restricting the artifact GAVs to be considered (non-matching GAVs will be discarded). For debugging.");
+
 
         CommandLineParser parser = new DefaultParser();
 

@@ -90,9 +90,9 @@ public class ArtifactSearch {
         List<File> cachedResultFiles = getCachedOrFetchByClass(className,batchCount,maxResultsInEachBatch);
         List<ArtifactSearchResponse> results = cachedResultFiles.stream()
                 .map(f -> parse(f))
-                .map(response -> ArtifactSearchResponseMerger.filterArtifacts(response, gavPredicate))
                 .collect(Collectors.toList());
-        ArtifactSearchResponse result = ArtifactSearchResponseMerger.merge(results);
+        ArtifactSearchResponse resultBeforeFiltering = ArtifactSearchResponseMerger.merge(results);
+        ArtifactSearchResponse result = ArtifactSearchResponseMerger.filterArtifacts(resultBeforeFiltering, gavPredicate);
         LOGGER.info("\t{} artifacts found with a class named \"{}\"",result.getBody().getArtifacts().size(),className);
         return result;
     }

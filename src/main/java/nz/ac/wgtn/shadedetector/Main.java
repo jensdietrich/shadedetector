@@ -24,6 +24,8 @@ import java.io.Reader;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -84,6 +86,9 @@ public class Main {
         options.addOption("cache", "cachedir", true, "path to root of cache folder hierarchy (default is \"" + Cache.getRoot() +"\")");
 
         options.addOption("sig","vulnerabilitysignal",true,"indicates the test signal indicating that the vulnerability is present, must be of one of: " + Stream.of(TestSignal.values()).map(v -> v.name()).collect(Collectors.joining(",")) + " (default read from testSignalWhenVulnerable in PoV's pov-project.json)");
+
+        options.addOption("fc", "filterclassnames", true, "a regex restricting the class names to be considered (non-matching class names will be discarded). For debugging.");
+        options.addOption("fa", "filterartifacts", true, "a regex restricting the artifact GAVs to be considered (non-matching GAVs will be discarded). For debugging.");
 
 
         CommandLineParser parser = new DefaultParser();
@@ -271,10 +276,23 @@ public class Main {
             System.exit(1);
         }
 
+        // The main reason to specify -filterclassnames or -filterartifacts is to save time while debugging.
+        Optional<String> filterClassNamesOption = Optional.ofNullable(cmd.getOptionValue("filterclassnames"));
+        LOGGER.info("Restrict search to class names matching: {}", filterClassNamesOption.map(s -> "/" + s + "/").orElse("(any)"));
+        Predicate<String> classNamePredicate = filterClassNamesOption
+                .map((Function<String, Predicate<String>>) regex -> (className -> className.matches(regex)))
+                .orElse(className -> true); // Default to keeping all class names
+
+        Optional<String> filterArtifactsOption = Optional.ofNullable(cmd.getOptionValue("filterartifacts"));
+        LOGGER.info("Restrict cloned artifacts to GAVs matching: {}", filterArtifactsOption.map(s -> "/" + s + "/").orElse("(any)"));
+        Predicate<String> gavPredicate = filterArtifactsOption
+                .map((Function<String, Predicate<String>>) regex -> (gavAsString -> gavAsString.matches(regex)))
+                .orElse(gavAsString -> true); // Default to keeping all matching artifact GAVs
+
         // find all potentially matching artifacts
         Map<String,ArtifactSearchResponse> matches = null;
         try {
-            matches = ArtifactSearch.findShadingArtifacts(originalSources,classSelector,10, ArtifactSearch.BATCHES,ArtifactSearch.ROWS_PER_BATCH);
+            matches = ArtifactSearch.findShadingArtifacts(originalSources, classSelector, classNamePredicate, gavPredicate, 10, ArtifactSearch.BATCHES, ArtifactSearch.ROWS_PER_BATCH);
         }
         catch (Exception e) {
             LOGGER.error("cannot fetch artifacts with matching classes from {}",gav,e);

@@ -6,11 +6,9 @@ import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -107,32 +105,49 @@ public class ArtifactSearch {
     }
 
     private static List<File> getCachedOrFetchByClass(String className, int batchCount, int maxResultsInEachBatch) throws ArtifactSearchException {
-        List<File> cached = getCachedByClassName(className);
-        if (!cached.isEmpty()) {
-            LOGGER.info("using cached data from " + cached.stream().map(f -> f.getAbsolutePath()).collect(Collectors.joining(", ")));
+        Optional<List<File>> alreadyCached = getCachedByClassName(className);
+
+        if (alreadyCached.isPresent()) {
+            LOGGER.info("using cached data from " + alreadyCached.get().stream().map(f -> f.getAbsolutePath()).collect(Collectors.joining(", ")));
+            return alreadyCached.get();
         }
         else {
-            OkHttpClient client = new OkHttpClient();
-            cached = new ArrayList<>();
-            for (int i=0;i<batchCount;i++) {
-                LOGGER.info("\tfetching batch {}/{}",i+1,batchCount);
+            List<File> newFiles = new ArrayList<>();
+            try {
+                // Download data to a temp dir, then rename when it is complete.
+                Path tempDir = Files.createTempDirectory(CACHE_BY_CLASSNAME.toPath(), "tmp.");
+                Path finalDir = CACHE_BY_CLASSNAME.toPath().resolve(className);
+                LOGGER.debug("\tfetching to temp dir {}", tempDir);
 
-                HttpUrl.Builder urlBuilder = HttpUrl.parse(SEARCH_URL).newBuilder();
-                urlBuilder.addQueryParameter("q", "c:" + className);
-                urlBuilder.addQueryParameter("wt", "json");
-                urlBuilder.addQueryParameter("rows", "" + maxResultsInEachBatch);
-                urlBuilder.addQueryParameter("start",""+((maxResultsInEachBatch*i)+1));
+                for (int i=0;i<batchCount;i++) {
+                    LOGGER.info("\tfetching batch {}/{}",i+1,batchCount);
 
-                String url = urlBuilder.build().toString();
-                File cachedElement = new File(CACHE_BY_CLASSNAME,className+'-'+(i+1)+".json");
-                try {
-                    cached.add(MvnRestAPIClient.fetchCharData(url,cachedElement.toPath()).toFile());
-                } catch (IOException x) {
-                    throw new ArtifactSearchException(x);
+                    HttpUrl.Builder urlBuilder = HttpUrl.parse(SEARCH_URL).newBuilder();
+                    urlBuilder.addQueryParameter("q", "c:" + className);
+                    urlBuilder.addQueryParameter("wt", "json");
+                    urlBuilder.addQueryParameter("rows", "" + maxResultsInEachBatch);
+                    urlBuilder.addQueryParameter("start",""+((maxResultsInEachBatch*i)+1));
+
+                    String url = urlBuilder.build().toString();
+                    String basename = className+'-'+(i+1)+".json";
+                    File cachedElementTemp = new File(tempDir.toFile(),basename);
+                    File cachedElementFinal = new File(finalDir.toFile(),basename);
+                    try {
+                        MvnRestAPIClient.fetchCharData(url,cachedElementTemp.toPath());
+                        newFiles.add(cachedElementFinal);
+                    } catch (IOException x) {
+                        throw new ArtifactSearchException("fetch of batch " + (i+1) + " failed", x);   // Temp dir will remain
+                    }
                 }
+
+                Files.move(tempDir, finalDir);  // Should work since source and target are on same FileStore
+                LOGGER.debug("renamed temp dir {} to {} successfully", tempDir, finalDir);
+            } catch (IOException x) {
+                throw new ArtifactSearchException("creating or renaming temp dir failed", x);
             }
+
+            return newFiles;
         }
-        return cached;
     }
 
 
@@ -197,11 +212,9 @@ public class ArtifactSearch {
         return cached;
     }
 
-    private static List<File> getCachedByClassName(String className) {
-        Pattern p = Pattern.compile(className+"-\\d+\\.json");
-        return Stream.of(CACHE_BY_CLASSNAME.listFiles())
-            .filter(f -> p.matcher(f.getName()).matches())
-            .collect(Collectors.toList());
+    private static Optional<List<File>> getCachedByClassName(String className) {
+        File[] contents = CACHE_BY_CLASSNAME.toPath().resolve(className).toFile().listFiles();
+        return Optional.ofNullable(contents).map(List::of);
     }
 
     private static List<File> getCachedByGroupAndArtifactId(String groupId,String artifactId) {

@@ -6,6 +6,7 @@ import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.*;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -140,10 +141,20 @@ public class ArtifactSearch {
                     }
                 }
 
-                Files.move(tempDir, finalDir);  // Should work since source and target are on same FileStore
-                LOGGER.debug("renamed temp dir {} to {} successfully", tempDir, finalDir);
+                // Atomically "rename" the temp dir to the final dir.
+                // Safe for concurrent access across threads or processes on at least Linux and Windows.
+                try {
+                    Files.createLink(finalDir, tempDir);    // A hardlink
+                    Files.delete(tempDir);
+                    LOGGER.debug("renamed temp dir {} to {} via hardlink+delete successfully", tempDir, finalDir);
+                } catch (FileAlreadyExistsException x) {
+                    // We raced with another thread/process, and they won. That's fine -- just use theirs
+                    LOGGER.debug("could not create hardlink from {} to {} since the latter already exists -- will use that", tempDir, finalDir);
+                }
+
+                // If we make it to here, a complete, consistent finalDir exists.
             } catch (IOException x) {
-                throw new ArtifactSearchException("creating or renaming temp dir failed", x);
+                throw new ArtifactSearchException("creating or renaming temp dir or hardlink failed", x);
             }
 
             return newFiles;

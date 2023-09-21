@@ -1,6 +1,7 @@
 package nz.ac.wgtn.shadedetector;
 
 import com.google.common.base.Preconditions;
+import com.google.common.io.CharStreams;
 import net.lingala.zip4j.ZipFile;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -237,4 +238,13 @@ public class Utils {
         x.printStackTrace(pw);
         return sw.toString();
     }
+
+    public static void cacheCharsToPath(Reader in, Path cached) {
+        try (Reader inSafe = in; Writer out = Files.newBufferedWriter(cached)) {    // inSafe will autoclose :)
+            CharStreams.copy(inSafe,out);
+        } catch (IOException e) {
+            LOGGER.error("problem caching response in {}",cached.toString(),e);
+            throw new RuntimeException(e);
+        }
+    };
 }

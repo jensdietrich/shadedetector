@@ -31,12 +31,7 @@ public class MvnRestAPIClient {
     };
 
     private static BiConsumer<Response,Path> CHAR_CACHING = (response,cached) -> {
-        try (Reader in = response.body().charStream(); Writer out = Files.newBufferedWriter(cached)) {
-            CharStreams.copy(in,out);
-        } catch (IOException e) {
-            LOGGER.error("problem caching response in {}",cached.toString(),e);
-            throw new RuntimeException(e);
-        }
+        Utils.cacheCharsToPath(response.body().charStream(), cached);
     };
 
     public static Path fetchBinaryData (String url, Path cached) throws IOException {

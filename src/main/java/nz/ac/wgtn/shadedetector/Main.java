@@ -48,6 +48,8 @@ public class Main {
     private static final String DEFAULT_GENERATED_VERIFICATION_PROJECT_VERSION = "0.0.1";
 
     private static final String DEFAULT_PROGRESS_STATS_NAME = "stats.log";
+    private static final String CACHE_BUILD_NAME = "build";
+    private static final File CACHE_BUILD = Cache.getCache(CACHE_BUILD_NAME);
 
     public enum ProcessingStage {QUERY_RESULTS, CONSOLIDATED_QUERY_RESULTS, NO_DEPENDENCY_TO_VULNERABLE, CLONE_DETECTED, POC_INSTANCE_COMPILED, POC_INSTANCE_TESTED, POC_INSTANCE_TESTED_SHADED, TESTED}
 
@@ -432,12 +434,14 @@ public class Main {
                     // TODO abstract threshold
                     if (cloneAnalysesResults.size() > 10) {
                         cloneDetected.add(match);
+
                         LOGGER.info("generating project to verifify vulnerability for " + match);
                         String verificationProjectArtifactName = match.toString().replace(":", "__");
                         LOGGER.info("\tgroupId: " + verificationProjectGroupName);
                         LOGGER.info("\tartifactId: " + verificationProjectArtifactName);
                         LOGGER.info("\tversion: " + verificationProjectVersion);
-                        Path verificationProjectFolderStaged = verificationProjectInstancesFolderStaging.resolve(verificationProjectArtifactName);
+//                        Path verificationProjectFolderStaged = verificationProjectInstancesFolderStaging.resolve(verificationProjectArtifactName);
+                        Path verificationProjectFolderStaged = CACHE_BUILD.toPath().resolve(povLabel).resolve(verificationProjectArtifactName);
                         LOGGER.info("\tproject folder: " + verificationProjectFolderStaged);
 
                         Map importTranslations = ImportTranslationExtractor.computeImportTranslations(originalSources, src, cloneAnalysesResults);

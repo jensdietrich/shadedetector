@@ -218,7 +218,6 @@ public class ArtifactSearch {
             LOGGER.info("using cached data from " + cached.stream().map(f -> f.getAbsolutePath()).collect(Collectors.joining(", ")));
         }
         else {
-            OkHttpClient client = new OkHttpClient();
             cached = new ArrayList<>();
             int batchCount = -1;    // -1 means we don't know how many batches there will be yet
             for (int i = 0; batchCount == -1 || i < batchCount; i++) {
@@ -235,38 +234,21 @@ public class ArtifactSearch {
 
                 String url = urlBuilder.build().toString();
                 LOGGER.info("\tsearch url: " + url);
-                Request request = new Request.Builder().url(url).build();
+                File cache = new File(CACHE_ARTIFACT_VERSIONS,groupId+':'+artifactId+'-'+(i+1)+".json");
 
-                Call call = client.newCall(request);
-                Response response = null;
                 try {
-                    response = call.execute();
+                    MvnRestAPIClient.fetchCharData(url, cache.toPath());
                 } catch (IOException x) {
-                    throw new ArtifactSearchException(x);
+                    throw new ArtifactSearchException("fetch of batch " + (i + 1) + " failed", x);
                 }
 
-                int responseCode = response.code();
-                LOGGER.info("\tresponse code is: {}",responseCode);
-
-                if (responseCode == 200) {
-                    File cache = new File(CACHE_ARTIFACT_VERSIONS,groupId+':'+artifactId+'-'+(i+1)+".json");
-                    try (Reader reader = response.body().charStream(); Writer writer = new FileWriter(cache)) {
-                        LOGGER.info("\tcaching data in {}",cache.getAbsolutePath());
-                        CharStreams.copy(reader, writer);
-                        cached.add(cache);
-                    } catch (IOException x) {
-                        throw new ArtifactSearchException("cannot read and cache response" + x);
-                    }
-
-                    // If we made it to here, the file was written and closed.
-                    if (batchCount == -1) {
-                        ArtifactSearchResponse firstResponse = parse(cache);
-                        int numFound = firstResponse.getBody().getNumFound();
-                        batchCount = (numFound + maxResultsInEachBatch - 1) / maxResultsInEachBatch;
-                        LOGGER.info("\tdiscovered there are {} results, so {} batches needed", numFound, batchCount);
-                    }
-                } else {
-                    throw new ArtifactSearchException("query returned unexpected status code " + responseCode + " - " + response.message());
+                // If we made it to here, the file was written and closed.
+                cached.add(cache);
+                if (batchCount == -1) {
+                    ArtifactSearchResponse firstResponse = parse(cache);
+                    int numFound = firstResponse.getBody().getNumFound();
+                    batchCount = (numFound + maxResultsInEachBatch - 1) / maxResultsInEachBatch;
+                    LOGGER.info("\tdiscovered there are {} results, so {} batches needed", numFound, batchCount);
                 }
             }
         }

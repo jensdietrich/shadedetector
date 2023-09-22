@@ -114,11 +114,21 @@ public class ArtifactSearch {
         else {
             List<File> newFiles = new ArrayList<>();
             try {
+                // "Grandfather in" any cached data already downloaded to the previous subdir-based cache system
+                Path oldSubdirCache = CACHE_BY_CLASSNAME.toPath().resolve(className);
+                boolean grandfatherInOldSubdirCache = oldSubdirCache.toFile().isDirectory()
+                        && oldSubdirCache.resolve(className + '-' + batchCount + ".json").toFile().exists()
+                        && !oldSubdirCache.resolve(className + '-' + (batchCount + 1) + ".json").toFile().exists();
+
                 // Download responses to a temp dir, merge them into a temporary JSON file, then rename that
                 // file and delete the temp dir. Do this atomically for each "running total" of batches,
                 // i.e., save SomeClass-1x200, SomeClass-2x200, ..., SomeClass-5x200.
-                Path tempDir = Files.createTempDirectory(CACHE_BY_CLASSNAME.toPath(), "tmp.");
-                LOGGER.debug("\tfetching to temp dir {}", tempDir);
+                Path tempDir = grandfatherInOldSubdirCache ? oldSubdirCache : Files.createTempDirectory(CACHE_BY_CLASSNAME.toPath(), "tmp.");
+                if (grandfatherInOldSubdirCache) {
+                    LOGGER.debug("\tgrandfathering in existing files from old cache subdir {}", tempDir);
+                } else {
+                    LOGGER.debug("\tfetching to temp dir {}", tempDir);
+                }
                 Path finalFile = null;
                 ArrayList<Path> pendingDeletions = new ArrayList<>();
                 boolean deleteTempDir = true;
@@ -136,10 +146,12 @@ public class ArtifactSearch {
                     String basename = className+'-'+(i+1)+".json";
                     File cachedElementTemp = new File(tempDir.toFile(),basename);
                     try {
-                        MvnRestAPIClient.fetchCharData(url,cachedElementTemp.toPath());
+                        if (!grandfatherInOldSubdirCache) {
+                            MvnRestAPIClient.fetchCharData(url, cachedElementTemp.toPath());
+                        }
                         newFiles.add(cachedElementTemp);
                     } catch (IOException x) {
-                        throw new ArtifactSearchException("fetch of batch " + (i+1) + " failed", x);   // Temp dir will remain
+                        throw new ArtifactSearchException("fetch of batch " + (i + 1) + " failed", x);   // Temp dir will remain
                     }
 
                     List<ArtifactSearchResponse> results = newFiles.stream()
@@ -167,7 +179,7 @@ public class ArtifactSearch {
                     finalFile = runningTotalFile;
                 }
 
-                // Clean up
+                // Clean up (including the just-grandfathered-in version of an old cache subdir)
                 if (deleteTempDir) {
                     pendingDeletions.add(tempDir);
                 }

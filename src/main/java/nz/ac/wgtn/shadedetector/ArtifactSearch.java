@@ -1,11 +1,15 @@
 package nz.ac.wgtn.shadedetector;
 
 import com.google.common.io.CharStreams;
+import com.google.common.io.MoreFiles;
+import com.google.common.io.RecursiveDeleteOption;
 import com.google.gson.Gson;
 import okhttp3.*;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.*;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -86,12 +90,8 @@ public class ArtifactSearch {
     }
 
     static ArtifactSearchResponse findShadingArtifacts (String className, Predicate<String> gavPredicate, int batchCount, int maxResultsInEachBatch) throws ArtifactSearchException {
-        List<File> cachedResultFiles = getCachedOrFetchByClass(className,batchCount,maxResultsInEachBatch);
-        List<ArtifactSearchResponse> results = cachedResultFiles.stream()
-                .map(f -> parse(f))
-                .map(response -> ArtifactSearchResponseMerger.filterArtifacts(response, gavPredicate))
-                .collect(Collectors.toList());
-        ArtifactSearchResponse result = ArtifactSearchResponseMerger.merge(results);
+        ArtifactSearchResponse resultBeforeFiltering = getCachedOrFetchByClass(className,batchCount,maxResultsInEachBatch);
+        ArtifactSearchResponse result = ArtifactSearchResponseMerger.filterArtifacts(resultBeforeFiltering, gavPredicate);
         LOGGER.info("\t{} artifacts found with a class named \"{}\"",result.getBody().getArtifacts().size(),className);
         return result;
     }
@@ -104,20 +104,24 @@ public class ArtifactSearch {
         return result;
     }
 
-    private static List<File> getCachedOrFetchByClass(String className, int batchCount, int maxResultsInEachBatch) throws ArtifactSearchException {
-        Optional<List<File>> alreadyCached = getCachedByClassName(className);
+    private static ArtifactSearchResponse getCachedOrFetchByClass(String className, int batchCount, int maxResultsInEachBatch) throws ArtifactSearchException {
+        Optional<File> alreadyCached = getCachedByClassName(className, batchCount, maxResultsInEachBatch);
 
         if (alreadyCached.isPresent()) {
-            LOGGER.info("using cached data from " + alreadyCached.get().stream().map(f -> f.getAbsolutePath()).collect(Collectors.joining(", ")));
-            return alreadyCached.get();
+            LOGGER.info("using cached data from " + alreadyCached.get().getAbsolutePath());
+            return parse(alreadyCached.get());
         }
         else {
             List<File> newFiles = new ArrayList<>();
             try {
-                // Download data to a temp dir, then rename when it is complete.
+                // Download responses to a temp dir, merge them into a temporary JSON file, then rename that
+                // file and delete the temp dir. Do this atomically for each "running total" of batches,
+                // i.e., save SomeClass-1x200, SomeClass-2x200, ..., SomeClass-5x200.
                 Path tempDir = Files.createTempDirectory(CACHE_BY_CLASSNAME.toPath(), "tmp.");
-                Path finalDir = CACHE_BY_CLASSNAME.toPath().resolve(className);
                 LOGGER.debug("\tfetching to temp dir {}", tempDir);
+                Path finalFile = null;
+                ArrayList<Path> pendingDeletions = new ArrayList<>();
+                boolean deleteTempDir = true;
 
                 for (int i=0;i<batchCount;i++) {
                     LOGGER.info("\tfetching batch {}/{}",i+1,batchCount);
@@ -131,25 +135,55 @@ public class ArtifactSearch {
                     String url = urlBuilder.build().toString();
                     String basename = className+'-'+(i+1)+".json";
                     File cachedElementTemp = new File(tempDir.toFile(),basename);
-                    File cachedElementFinal = new File(finalDir.toFile(),basename);
                     try {
                         MvnRestAPIClient.fetchCharData(url,cachedElementTemp.toPath());
-                        newFiles.add(cachedElementFinal);
+                        newFiles.add(cachedElementTemp);
                     } catch (IOException x) {
                         throw new ArtifactSearchException("fetch of batch " + (i+1) + " failed", x);   // Temp dir will remain
                     }
+
+                    List<ArtifactSearchResponse> results = newFiles.stream()
+                            .map(ArtifactSearch::parse)
+                            .collect(Collectors.toList());
+                    ArtifactSearchResponse result = ArtifactSearchResponseMerger.merge(results);
+
+                    Path tempFile = Files.createTempFile(CACHE_BY_CLASSNAME.toPath(), "tmpmerged.", "");
+                    writeJson(tempFile, result);
+
+                    // Atomically "rename" the temp file to the final file.
+                    // Safe for concurrent access across threads or processes on at least Linux and Windows.
+                    Path runningTotalFile = CACHE_BY_CLASSNAME.toPath().resolve(cachedClassFilename(className, i + 1, maxResultsInEachBatch));
+                    try {
+                        Files.createLink(runningTotalFile, tempFile);    // A hardlink
+                        pendingDeletions.add(tempFile);
+                        LOGGER.debug("created hardlink from {} to temp file {} via hardlink+delete successfully", runningTotalFile, tempFile);
+                    } catch (FileAlreadyExistsException x) {
+                        // We raced with another thread/process, and they won. That's fine -- just use theirs
+                        LOGGER.debug("could not create hardlink from {} to {} since the latter already exists -- will use that", tempFile, runningTotalFile);
+                        deleteTempDir = false;
+                    }
+
+                    // If we make it to here, a complete, consistent runningTotalFile exists.
+                    finalFile = runningTotalFile;
                 }
 
-                Files.move(tempDir, finalDir);  // Should work since source and target are on same FileStore
-                LOGGER.debug("renamed temp dir {} to {} successfully", tempDir, finalDir);
-            } catch (IOException x) {
-                throw new ArtifactSearchException("creating or renaming temp dir failed", x);
-            }
+                // Clean up
+                if (deleteTempDir) {
+                    pendingDeletions.add(tempDir);
+                }
 
-            return newFiles;
+                for (Path fileOrDir : pendingDeletions) {
+                    MoreFiles.deleteRecursively(fileOrDir, RecursiveDeleteOption.ALLOW_INSECURE);
+                    LOGGER.debug("deleted temp file/dir {}", fileOrDir);
+                }
+
+                // Rereading from disk ensures consistency between initial (uncached) and subsequent (cached) calls.
+                return parse(finalFile.toFile());
+            } catch (IOException x) {
+                throw new ArtifactSearchException("creating or renaming temp dir or hardlink failed", x);
+            }
         }
     }
-
 
     private static List<File> getCachedOrFetchByGroupAndArtifactId(String groupId,String artifactId, int maxResultsInEachBatch) throws ArtifactSearchException {
         List<File> cached = getCachedByGroupAndArtifactId(groupId,artifactId);
@@ -212,9 +246,14 @@ public class ArtifactSearch {
         return cached;
     }
 
-    private static Optional<List<File>> getCachedByClassName(String className) {
-        File[] contents = CACHE_BY_CLASSNAME.toPath().resolve(className).toFile().listFiles();
-        return Optional.ofNullable(contents).map(List::of);
+    private static Optional<File> getCachedByClassName(String className, int batchCount, int maxResultsInEachBatch) {
+        File contents = CACHE_BY_CLASSNAME.toPath().resolve(cachedClassFilename(className, batchCount, maxResultsInEachBatch)).toFile();
+        return contents.exists() ? Optional.of(contents) : Optional.empty();
+    }
+
+    @NotNull
+    private static String cachedClassFilename(String className, int batchCount, int maxResultsInEachBatch) {
+        return className + "-" + batchCount + "x" + maxResultsInEachBatch;
     }
 
     private static List<File> getCachedByGroupAndArtifactId(String groupId,String artifactId) {
@@ -237,5 +276,11 @@ public class ArtifactSearch {
             LOGGER.error("cannot read / parse cached " + f.getAbsolutePath(),e);
             throw new RuntimeException(e);
         }
+    }
+
+    private static void writeJson(Path path, ArtifactSearchResponse result) throws IOException {
+        Gson gson = new Gson();
+        String json = gson.toJson(result);
+        Utils.cacheCharsToPath(new StringReader(json), path);
     }
 }

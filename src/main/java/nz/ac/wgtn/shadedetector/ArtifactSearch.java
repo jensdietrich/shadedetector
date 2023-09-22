@@ -167,9 +167,9 @@ public class ArtifactSearch {
                             .map(ArtifactSearch::parse)
                             .collect(Collectors.toList());
 
-                    while (results.size() < batchCount) {
-                        results.add(ArtifactSearchResponseMerger.createEmpty(numFound, (maxResultsInEachBatch*i)+1, maxResultsInEachBatch));
-                        LOGGER.debug("Added fake empty response");
+                    while (results.size() < i + 1) {
+                        results.add(ArtifactSearchResponseMerger.createEmpty(numFound, (maxResultsInEachBatch * results.size())+1, maxResultsInEachBatch));
+                        LOGGER.debug("Added fake empty response (query saved!)");
                     }
 
                     ArtifactSearchResponse result = ArtifactSearchResponseMerger.merge(results);

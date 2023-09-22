@@ -120,6 +120,7 @@ public class ArtifactSearch {
                 Path tempDir = Files.createTempDirectory(CACHE_BY_CLASSNAME.toPath(), "tmp.");
                 LOGGER.debug("\tfetching to temp dir {}", tempDir);
                 Path finalFile = null;
+                ArrayList<Path> pendingDeletions = new ArrayList<>();
 
                 for (int i=0;i<batchCount;i++) {
                     LOGGER.info("\tfetching batch {}/{}",i+1,batchCount);
@@ -153,9 +154,9 @@ public class ArtifactSearch {
                     Path runningTotalFile = CACHE_BY_CLASSNAME.toPath().resolve(cachedClassFilename(className, i + 1, maxResultsInEachBatch));
                     try {
                         Files.createLink(runningTotalFile, tempFile);    // A hardlink
-                        Files.delete(tempFile);
-                        MoreFiles.deleteRecursively(tempDir, RecursiveDeleteOption.ALLOW_INSECURE);
-                        LOGGER.debug("renamed temp file {} to {} via hardlink+delete successfully", tempFile, runningTotalFile);
+                        pendingDeletions.add(tempFile);
+                        pendingDeletions.add(tempDir);
+                        LOGGER.debug("created hardlink from {} to temp file {} via hardlink+delete successfully", runningTotalFile, tempFile);
                     } catch (FileAlreadyExistsException x) {
                         // We raced with another thread/process, and they won. That's fine -- just use theirs
                         LOGGER.debug("could not create hardlink from {} to {} since the latter already exists -- will use that", tempFile, runningTotalFile);
@@ -163,6 +164,12 @@ public class ArtifactSearch {
 
                     // If we make it to here, a complete, consistent runningTotalFile exists.
                     finalFile = runningTotalFile;
+                }
+
+                // Clean up
+                for (Path fileOrDir : pendingDeletions) {
+                    MoreFiles.deleteRecursively(fileOrDir, RecursiveDeleteOption.ALLOW_INSECURE);
+                    LOGGER.debug("deleted temp file/dir {}", fileOrDir);
                 }
 
                 // Rereading from disk ensures consistency between initial (uncached) and subsequent (cached) calls.

@@ -115,9 +115,11 @@ public class ArtifactSearch {
             List<File> newFiles = new ArrayList<>();
             try {
                 // Download responses to a temp dir, merge them into a temporary JSON file, then rename that
-                // file and delete the temp dir.
+                // file and delete the temp dir. Do this atomically for each "running total" of batches,
+                // i.e., save SomeClass-1x200, SomeClass-2x200, ..., SomeClass-5x200.
                 Path tempDir = Files.createTempDirectory(CACHE_BY_CLASSNAME.toPath(), "tmp.");
                 LOGGER.debug("\tfetching to temp dir {}", tempDir);
+                Path finalFile = null;
 
                 for (int i=0;i<batchCount;i++) {
                     LOGGER.info("\tfetching batch {}/{}",i+1,batchCount);
@@ -137,30 +139,32 @@ public class ArtifactSearch {
                     } catch (IOException x) {
                         throw new ArtifactSearchException("fetch of batch " + (i+1) + " failed", x);   // Temp dir will remain
                     }
+
+                    List<ArtifactSearchResponse> results = newFiles.stream()
+                            .map(ArtifactSearch::parse)
+                            .collect(Collectors.toList());
+                    ArtifactSearchResponse result = ArtifactSearchResponseMerger.merge(results);
+
+                    Path tempFile = Files.createTempFile(CACHE_BY_CLASSNAME.toPath(), "tmpmerged.", "");
+                    writeJson(tempFile, result);
+
+                    // Atomically "rename" the temp file to the final file.
+                    // Safe for concurrent access across threads or processes on at least Linux and Windows.
+                    Path runningTotalFile = CACHE_BY_CLASSNAME.toPath().resolve(cachedClassFilename(className, i + 1, maxResultsInEachBatch));
+                    try {
+                        Files.createLink(runningTotalFile, tempFile);    // A hardlink
+                        Files.delete(tempFile);
+                        MoreFiles.deleteRecursively(tempDir, RecursiveDeleteOption.ALLOW_INSECURE);
+                        LOGGER.debug("renamed temp file {} to {} via hardlink+delete successfully", tempFile, runningTotalFile);
+                    } catch (FileAlreadyExistsException x) {
+                        // We raced with another thread/process, and they won. That's fine -- just use theirs
+                        LOGGER.debug("could not create hardlink from {} to {} since the latter already exists -- will use that", tempFile, runningTotalFile);
+                    }
+
+                    // If we make it to here, a complete, consistent runningTotalFile exists.
+                    finalFile = runningTotalFile;
                 }
 
-                List<ArtifactSearchResponse> results = newFiles.stream()
-                        .map(ArtifactSearch::parse)
-                        .collect(Collectors.toList());
-                ArtifactSearchResponse result = ArtifactSearchResponseMerger.merge(results);
-
-                Path tempFile = Files.createTempFile(CACHE_BY_CLASSNAME.toPath(), "tmpmerged.", "");
-                writeJson(tempFile, result);
-
-                // Atomically "rename" the temp file to the final file.
-                // Safe for concurrent access across threads or processes on at least Linux and Windows.
-                Path finalFile = CACHE_BY_CLASSNAME.toPath().resolve(cachedClassFilename(className, batchCount, maxResultsInEachBatch));
-                try {
-                    Files.createLink(finalFile, tempFile);    // A hardlink
-                    Files.delete(tempFile);
-                    MoreFiles.deleteRecursively(tempDir, RecursiveDeleteOption.ALLOW_INSECURE);
-                    LOGGER.debug("renamed temp file {} to {} via hardlink+delete successfully", tempFile, finalFile);
-                } catch (FileAlreadyExistsException x) {
-                    // We raced with another thread/process, and they won. That's fine -- just use theirs
-                    LOGGER.debug("could not create hardlink from {} to {} since the latter already exists -- will use that", tempFile, finalFile);
-                }
-
-                // If we make it to here, a complete, consistent finalFile exists.
                 // Rereading from disk ensures consistency between initial (uncached) and subsequent (cached) calls.
                 return parse(finalFile.toFile());
             } catch (IOException x) {

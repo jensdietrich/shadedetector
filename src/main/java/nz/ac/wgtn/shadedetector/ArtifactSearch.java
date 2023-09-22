@@ -121,6 +121,7 @@ public class ArtifactSearch {
                 LOGGER.debug("\tfetching to temp dir {}", tempDir);
                 Path finalFile = null;
                 ArrayList<Path> pendingDeletions = new ArrayList<>();
+                boolean deleteTempDir = true;
 
                 for (int i=0;i<batchCount;i++) {
                     LOGGER.info("\tfetching batch {}/{}",i+1,batchCount);
@@ -154,12 +155,12 @@ public class ArtifactSearch {
                     Path runningTotalFile = CACHE_BY_CLASSNAME.toPath().resolve(cachedClassFilename(className, i + 1, maxResultsInEachBatch));
                     try {
                         Files.createLink(runningTotalFile, tempFile);    // A hardlink
-                        pendingDeletions.add(tempFile);
                         pendingDeletions.add(tempDir);
                         LOGGER.debug("created hardlink from {} to temp file {} via hardlink+delete successfully", runningTotalFile, tempFile);
                     } catch (FileAlreadyExistsException x) {
                         // We raced with another thread/process, and they won. That's fine -- just use theirs
                         LOGGER.debug("could not create hardlink from {} to {} since the latter already exists -- will use that", tempFile, runningTotalFile);
+                        deleteTempDir = false;
                     }
 
                     // If we make it to here, a complete, consistent runningTotalFile exists.
@@ -167,6 +168,10 @@ public class ArtifactSearch {
                 }
 
                 // Clean up
+                if (deleteTempDir) {
+                    pendingDeletions.add(tempDir);
+                }
+
                 for (Path fileOrDir : pendingDeletions) {
                     MoreFiles.deleteRecursively(fileOrDir, RecursiveDeleteOption.ALLOW_INSECURE);
                     LOGGER.debug("deleted temp file/dir {}", fileOrDir);

@@ -159,7 +159,7 @@ public class ArtifactSearch {
                             .collect(Collectors.toList());
                     ArtifactSearchResponse result = ArtifactSearchResponseMerger.merge(results);
 
-                    Path tempFile = Files.createTempFile(CACHE_BY_CLASSNAME.toPath(), "tmpmerged.", "");
+                    Path tempFile = Files.createTempFile(CACHE_BY_CLASSNAME.toPath(), "tmpmerged.", ".json");
                     writeJson(tempFile, result);
 
                     // Atomically "rename" the temp file to the final file.

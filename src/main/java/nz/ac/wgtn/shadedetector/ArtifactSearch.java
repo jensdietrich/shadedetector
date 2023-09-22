@@ -132,31 +132,46 @@ public class ArtifactSearch {
                 Path finalFile = null;
                 ArrayList<Path> pendingDeletions = new ArrayList<>();
                 boolean deleteTempDir = true;
+                int numFound = -1; // -1 means we don't know yet
 
                 for (int i=0;i<batchCount;i++) {
-                    LOGGER.info("\tfetching batch {}/{}",i+1,batchCount);
+                    if (numFound == -1 || maxResultsInEachBatch*i < numFound) {
+                        LOGGER.info("\tfetching batch {}/{}", i + 1, batchCount);
 
-                    HttpUrl.Builder urlBuilder = HttpUrl.parse(SEARCH_URL).newBuilder();
-                    urlBuilder.addQueryParameter("q", "c:" + className);
-                    urlBuilder.addQueryParameter("wt", "json");
-                    urlBuilder.addQueryParameter("rows", "" + maxResultsInEachBatch);
-                    urlBuilder.addQueryParameter("start",""+((maxResultsInEachBatch*i)+1));
+                        HttpUrl.Builder urlBuilder = HttpUrl.parse(SEARCH_URL).newBuilder();
+                        urlBuilder.addQueryParameter("q", "c:" + className);
+                        urlBuilder.addQueryParameter("wt", "json");
+                        urlBuilder.addQueryParameter("rows", "" + maxResultsInEachBatch);
+                        urlBuilder.addQueryParameter("start", "" + ((maxResultsInEachBatch * i) + 1));
 
-                    String url = urlBuilder.build().toString();
-                    String basename = className+'-'+(i+1)+".json";
-                    File cachedElementTemp = new File(tempDir.toFile(),basename);
-                    try {
-                        if (!grandfatherInOldSubdirCache) {
-                            MvnRestAPIClient.fetchCharData(url, cachedElementTemp.toPath());
+                        String url = urlBuilder.build().toString();
+                        String basename = className + '-' + (i + 1) + ".json";
+                        File cachedElementTemp = new File(tempDir.toFile(), basename);
+                        try {
+                            if (!grandfatherInOldSubdirCache) {
+                                MvnRestAPIClient.fetchCharData(url, cachedElementTemp.toPath());
+
+                                if (numFound == -1) {
+                                    ArtifactSearchResponse firstResponse = parse(cachedElementTemp);
+                                    numFound = firstResponse.getBody().getNumFound();
+                                    LOGGER.info("\tdiscovered there are {} results, so {} batches needed", numFound, (numFound + maxResultsInEachBatch - 1) / maxResultsInEachBatch);
+                                }
+                            }
+                            newFiles.add(cachedElementTemp);
+                        } catch (IOException x) {
+                            throw new ArtifactSearchException("fetch of batch " + (i + 1) + " failed", x);   // Temp dir will remain
                         }
-                        newFiles.add(cachedElementTemp);
-                    } catch (IOException x) {
-                        throw new ArtifactSearchException("fetch of batch " + (i + 1) + " failed", x);   // Temp dir will remain
                     }
 
                     List<ArtifactSearchResponse> results = newFiles.stream()
                             .map(ArtifactSearch::parse)
                             .collect(Collectors.toList());
+
+                    while (results.size() < batchCount) {
+                        results.add(ArtifactSearchResponseMerger.createEmpty(numFound, (maxResultsInEachBatch*i)+1, maxResultsInEachBatch));
+                        LOGGER.debug("Added fake empty response");
+                    }
+
                     ArtifactSearchResponse result = ArtifactSearchResponseMerger.merge(results);
 
                     Path tempFile = Files.createTempFile(CACHE_BY_CLASSNAME.toPath(), "tmpmerged.", ".json");

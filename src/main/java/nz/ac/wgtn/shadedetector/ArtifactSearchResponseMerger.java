@@ -71,4 +71,35 @@ public class ArtifactSearchResponseMerger {
        newResponse.setBody(newBody);
        return newResponse;
    }
+
+    /**
+     * Convenience method to construct a fake empty search response with enough fields populated that
+     * it can be merged with {@link #merge}.
+     */
+   public static ArtifactSearchResponse createEmpty(int numFound, int start, int rows) {
+       ArtifactSearchResponse response = new ArtifactSearchResponse();
+
+       // merge head -- attributes are not very important for future processing as origional
+       // responses are retained in cache, this is mainly to merge the artifact sets
+
+       ResponseHeader header = new ResponseHeader();
+       // use first , as this is mainly used to determine whether the dataset is outdated
+       // -1 encode error
+       header.setQtime(Integer.MAX_VALUE);    // No effect on merge()'s min()
+       header.setStatus(0);
+
+       ResponseHeader.Parameters parameters = new ResponseHeader.Parameters();
+       parameters.setRows(rows);
+       header.setParameters(parameters);
+       response.setHeader(header);
+
+       // merge body
+       ResponseBody body = new ResponseBody();
+       body.setArtifacts(List.of());
+       body.setNumFound(numFound);
+       body.setStart(start);
+       response.setBody(body);
+
+       return response;
+   }
 }

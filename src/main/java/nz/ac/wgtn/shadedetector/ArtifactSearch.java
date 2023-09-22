@@ -155,7 +155,7 @@ public class ArtifactSearch {
                     Path runningTotalFile = CACHE_BY_CLASSNAME.toPath().resolve(cachedClassFilename(className, i + 1, maxResultsInEachBatch));
                     try {
                         Files.createLink(runningTotalFile, tempFile);    // A hardlink
-                        pendingDeletions.add(tempDir);
+                        pendingDeletions.add(tempFile);
                         LOGGER.debug("created hardlink from {} to temp file {} via hardlink+delete successfully", runningTotalFile, tempFile);
                     } catch (FileAlreadyExistsException x) {
                         // We raced with another thread/process, and they won. That's fine -- just use theirs

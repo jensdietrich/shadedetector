@@ -50,7 +50,6 @@ public class Main {
 
     private static final String DEFAULT_PROGRESS_STATS_NAME = "stats.log";
     private static final String CACHE_BUILD_NAME = "build";
-    private static final File CACHE_BUILD = Cache.getCache(CACHE_BUILD_NAME);
 
     public enum ProcessingStage {QUERY_RESULTS, CONSOLIDATED_QUERY_RESULTS, NO_DEPENDENCY_TO_VULNERABLE, CLONE_DETECTED, POC_INSTANCE_COMPILED, POC_INSTANCE_TESTED, POC_INSTANCE_TESTED_SHADED, TESTED}
 
@@ -395,7 +394,7 @@ public class Main {
             }
         }
 //        LOGGER.info("verified projects will be moved from {} to {}",verificationProjectInstancesFolderStaging,verificationProjectInstancesFolderFinal);
-        Path buildCacheFolder = CACHE_BUILD.toPath().resolve(povLabel);
+        Path buildCacheFolder = Cache.getCache(CACHE_BUILD_NAME).toPath().resolve(povLabel).toAbsolutePath();
         LOGGER.info("verified projects will be symlinked from {} to cached built projects under {}", verificationProjectInstancesFolderFinal, buildCacheFolder);
         assert verificationProjectInstancesFolderFinal!=null;
 

@@ -392,6 +392,7 @@ public class Main {
         Set<Artifact> sourcesHaveJavaFiles = new HashSet<>();
         Set<Artifact> cloneDetected = new HashSet<>();
         Set<Artifact> compiledSuccessfully = new HashSet<>();
+        Set<Artifact> surefireReportsGenerated = new HashSet<>();
         Set<Artifact> vulnerabilityConfirmed = new HashSet<>();
         Set<Artifact> shaded = new HashSet<>();
 
@@ -457,7 +458,7 @@ public class Main {
                             }
 
                             if (result.isTested()) {
-                                boolean vulnerabilityIsPresent = isVulnerabilityPresent(expectedTestSignal, verificationProjectFolderStaged);
+                                boolean vulnerabilityIsPresent = isVulnerabilityPresent(expectedTestSignal, verificationProjectFolderStaged, () -> surefireReportsGenerated.add(match));
                                 if (vulnerabilityIsPresent) {
                                     vulnerabilityConfirmed.add(match);
     //                                Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(verificationProjectArtifactName);
@@ -514,6 +515,7 @@ public class Main {
         progressReporter.artifactsProcessed(ProcessingStage.SOURCES_HAVE_JAVA_FILES, sourcesHaveJavaFiles);
         progressReporter.artifactsProcessed(ProcessingStage.CLONE_DETECTED,cloneDetected);
         progressReporter.artifactsProcessed(ProcessingStage.POV_INSTANCE_COMPILED,compiledSuccessfully);
+        progressReporter.artifactsProcessed(ProcessingStage.POV_INSTANCE_SUREFIRE_REPORTS_GENERATED, surefireReportsGenerated);
         progressReporter.artifactsProcessed(ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED,vulnerabilityConfirmed);
         progressReporter.artifactsProcessed(ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED_SHADED, Sets.intersection(vulnerabilityConfirmed,shaded));
 
@@ -533,11 +535,12 @@ public class Main {
         }
     }
 
-    private static boolean isVulnerabilityPresent(TestSignal expectedTestSignal, Path verificationProjectFolder) throws IOException, JDOMException {
+    private static boolean isVulnerabilityPresent(TestSignal expectedTestSignal, Path verificationProjectFolder, Runnable testResultsParsedCallback) throws IOException, JDOMException {
         Path surefireReports = verificationProjectFolder.resolve("target/surefire-reports");
 
         if (Files.exists(surefireReports)) {
             SurefireUtils.TestResults testResults = SurefireUtils.parseSurefireReports(surefireReports);
+            testResultsParsedCallback.run();
             boolean vulnerabilityIsPresent = testResults.assertExpectedOutcome(expectedTestSignal);
             LOGGER.info("tests in {}: {} passed, {} failed, {} errors, {} skipped -> vuln is {}sent",
                     verificationProjectFolder,

@@ -48,6 +48,8 @@ public class Main {
     private static final String DEFAULT_GENERATED_VERIFICATION_PROJECT_VERSION = "0.0.1";
 
     private static final String DEFAULT_PROGRESS_STATS_NAME = "stats.log";
+    private static final int DEFAULT_MAX_SEARCH_CLASSES = 10;
+    private static final int DEFAULT_MIN_CLONED_CLASSES = 11;   // Was originally "> 10", comparison is now ">="
     private static final String CACHE_BUILD_NAME = "build";
 
     // resources will be copied into verification projects instantiated for clones
@@ -90,6 +92,10 @@ public class Main {
 
         options.addOption("pl", "povlabel", true, "the label for this PoV (output will go under a subdir having this name; default is the basename of the path specified with -vul)");
 
+        options.addOption("msc", "maxsearchclasses", true, "the maximum number of class names to search via the REST API per candidate (optional, default is " + DEFAULT_MAX_SEARCH_CLASSES + ")");
+        options.addOption("bc", "batchcount", true, "the number of by-class REST API search query batches per candidate (optional, default is " + ArtifactSearch.BATCHES + ")");
+        options.addOption("bs", "batchsize", true, "the maximum number of rows requested in each by-class REST API search query batch (optional, default is " + ArtifactSearch.ROWS_PER_BATCH + ")");
+        options.addOption("mcc", "minclonedclasses", true, "the minimum number of classes detected as clones needed to trigger compilation and testing (optional, default is " + DEFAULT_MIN_CLONED_CLASSES + ")");
 
         CommandLineParser parser = new DefaultParser();
 
@@ -291,10 +297,19 @@ public class Main {
                 .map((Function<String, Predicate<String>>) regex -> (gavAsString -> gavAsString.matches(regex)))
                 .orElse(gavAsString -> true); // Default to keeping all matching artifact GAVs
 
+        int maxClassesUsedForSearch = Optional.ofNullable(cmd.getOptionValue("maxsearchclasses")).map(Integer::parseInt).orElse(DEFAULT_MAX_SEARCH_CLASSES);
+        LOGGER.info("Maximum number of class names to search for: {}", maxClassesUsedForSearch);
+        int classSearchBatchCount = Optional.ofNullable(cmd.getOptionValue("batchcount")).map(Integer::parseInt).orElse(ArtifactSearch.BATCHES);
+        LOGGER.info("By-class REST API search batch count: {}", classSearchBatchCount);
+        int classSearchMaxResultsInEachBatch = Optional.ofNullable(cmd.getOptionValue("batchsize")).map(Integer::parseInt).orElse(ArtifactSearch.ROWS_PER_BATCH);
+        LOGGER.info("By-class REST API search batch size: {}", classSearchMaxResultsInEachBatch);
+        int minClonedClasses = Optional.ofNullable(cmd.getOptionValue("minclonedclasses")).map(Integer::parseInt).orElse(DEFAULT_MIN_CLONED_CLASSES);
+        LOGGER.info("Minimum number of classes detected as clones needed to trigger compilation and testing: {}", minClonedClasses);
+
         // find all potentially matching artifacts
         Map<String,ArtifactSearchResponse> matches = null;
         try {
-            matches = ArtifactSearch.findShadingArtifacts(originalSources, classSelector, classNamePredicate, gavPredicate, 10, ArtifactSearch.BATCHES, ArtifactSearch.ROWS_PER_BATCH);
+            matches = ArtifactSearch.findShadingArtifacts(originalSources, classSelector, classNamePredicate, gavPredicate, maxClassesUsedForSearch, classSearchBatchCount, classSearchMaxResultsInEachBatch);
         }
         catch (Exception e) {
             LOGGER.error("cannot fetch artifacts with matching classes from {}",gav,e);
@@ -421,8 +436,7 @@ public class Main {
 
                         LOGGER.info("Reporting results for " + match.getId());
 
-                        // TODO abstract threshold
-                        if (cloneAnalysesResults.size() > 10) {
+                        if (cloneAnalysesResults.size() >= minClonedClasses) {
                             cloneDetected.add(match);
                             LOGGER.info("generating project to verifify vulnerability for " + match);
                             String verificationProjectArtifactName = match.toString().replace(":", "__");

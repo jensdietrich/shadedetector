@@ -387,6 +387,9 @@ public class Main {
 
 
         // sets mainly used to produce stats later
+        Set<Artifact> sourcesFetched = new HashSet<>();
+        Set<Artifact> sourcesExpanded = new HashSet<>();
+        Set<Artifact> sourcesHaveJavaFiles = new HashSet<>();
         Set<Artifact> cloneDetected = new HashSet<>();
         Set<Artifact> compiledSuccessfully = new HashSet<>();
         Set<Artifact> vulnerabilityConfirmed = new HashSet<>();
@@ -404,89 +407,96 @@ public class Main {
             }
             else {
                 try {
-                    Path src = Utils.extractFromZipToTempDir(FetchResources.fetchSources(match));
+                    Path srcJar = FetchResources.fetchSources(match);
+                    sourcesFetched.add(match);
+                    Path src = Utils.extractFromZipToTempDir(srcJar);
+                    sourcesExpanded.add(match);
                     sources = Utils.listJavaSources(src, true);
-                    cloneAnalysesResults = cloneDetector.detect(originalSources, src);
+                    if (sources.isEmpty()) {
+                        LOGGER.error("Source for {} contains no .java files", match.getId());
+                    } else {
+                        sourcesHaveJavaFiles.add(match);
+                        cloneAnalysesResults = cloneDetector.detect(originalSources, src);
 
-                    LOGGER.info("Reporting results for " + match.getId());
+                        LOGGER.info("Reporting results for " + match.getId());
 
-                    // TODO abstract threshold
-                    if (cloneAnalysesResults.size() > 10) {
-                        cloneDetected.add(match);
-                        LOGGER.info("generating project to verifify vulnerability for " + match);
-                        String verificationProjectArtifactName = match.toString().replace(":", "__");
-                        LOGGER.info("\tgroupId: " + verificationProjectGroupName);
-                        LOGGER.info("\tartifactId: " + verificationProjectArtifactName);
-                        LOGGER.info("\tversion: " + verificationProjectVersion);
-                        Path verificationProjectFolderStaged = buildCacheFolder.resolve(verificationProjectArtifactName);
-                        LOGGER.info("\tproject folder: " + verificationProjectFolderStaged);
+                        // TODO abstract threshold
+                        if (cloneAnalysesResults.size() > 10) {
+                            cloneDetected.add(match);
+                            LOGGER.info("generating project to verifify vulnerability for " + match);
+                            String verificationProjectArtifactName = match.toString().replace(":", "__");
+                            LOGGER.info("\tgroupId: " + verificationProjectGroupName);
+                            LOGGER.info("\tartifactId: " + verificationProjectArtifactName);
+                            LOGGER.info("\tversion: " + verificationProjectVersion);
+                            Path verificationProjectFolderStaged = buildCacheFolder.resolve(verificationProjectArtifactName);
+                            LOGGER.info("\tproject folder: " + verificationProjectFolderStaged);
 
-                        Map importTranslations = ImportTranslationExtractor.computeImportTranslations(originalSources, src, cloneAnalysesResults);
+                            Map importTranslations = ImportTranslationExtractor.computeImportTranslations(originalSources, src, cloneAnalysesResults);
 
-                        MoreFiles.createParentDirectories(verificationProjectFolderStaged);
-                        MVNProjectCloner.CloneResult result = MVNProjectCloner.cloneMvnProject(
-                                verificationProjectTemplateFolder,
-                                verificationProjectFolderStaged,
-                                gav,
-                                match.asGAV(),
-                                new GAV(verificationProjectGroupName, verificationProjectArtifactName, verificationProjectVersion),
-                                importTranslations,
-                                testEnviron
-                        );
-                        packagesHaveChangedInClone = result.isRenamedImports();
-                        if (packagesHaveChangedInClone) {
-                            shaded.add(match);
-                        }
-
-                        if (result.isCompiled()) {
-                            state = ResultReporter.VerificationState.COMPILED;
-                            compiledSuccessfully.add(match);
-                        }
-                        if (result.isTested()) { // override
-                            state = ResultReporter.VerificationState.TESTED;
-                        }
-
-                        if (result.isTested()) {
-                            boolean vulnerabilityIsPresent = isVulnerabilityPresent(expectedTestSignal, verificationProjectFolderStaged);
-                            if (vulnerabilityIsPresent) {
-                                vulnerabilityConfirmed.add(match);
-//                                Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(verificationProjectArtifactName);
-//                                LOGGER.info("\tmoving verified project folder from {} to {}", verificationProjectFolderStaged, verificationProjectFolderFinal);
-//                                MVNProjectCloner.moveMvnProject(verificationProjectFolderStaged, verificationProjectFolderFinal);
-//
-//                                // re-test to create surefire reports
-//                                LOGGER.error("running build test on final project {}", verificationProjectFolderFinal);
-//                                Path buildLog = verificationProjectFolderFinal.resolve(TEST_LOG);
-//                                try {
-//                                    ProcessResult pr = MVNExe.mvnTest(verificationProjectFolderFinal, testEnviron);
-//                                    String out = pr.outputUTF8();
-//                                    Files.write(buildLog, List.of(out));
-//
-//                                    boolean vulnerabilityIsPresentInFinal = isVulnerabilityPresent(expectedTestSignal, verificationProjectFolderFinal);
-//                                    if (!vulnerabilityIsPresentInFinal) {
-//                                        LOGGER.error("error testing final project {} -- vulnerability was present in staging but not in final", verificationProjectFolderFinal);
-//                                    }
-//                                } catch (Exception x) {
-//                                    LOGGER.error("error testing final project {}", verificationProjectFolderFinal, x);
-//                                    String stacktrace = Utils.printStacktrace(x);
-//                                    Files.write(buildLog, List.of(stacktrace));
-//                                }
-                                //TODO: Decide what we want as the "final" output. Options include *copying* (not
-                                // moving) the staging folder every time (and optionally rerunning the test);
-                                // symlinking to the cached staging folder (and not rerunning the test).
-                                Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(povLabel).resolve(verificationProjectArtifactName);
-                                LOGGER.info("\tVuln verified! Creating a symlink at {} to the cached result at {}", verificationProjectFolderFinal, verificationProjectFolderStaged);
-                                try {
-                                    MoreFiles.createParentDirectories(verificationProjectFolderFinal);
-                                    Files.createSymbolicLink(verificationProjectFolderFinal, verificationProjectFolderStaged);
-                                } catch (IOException x) {
-                                    LOGGER.error("Could not create final symlink from " + verificationProjectFolderFinal + " to " + verificationProjectFolderStaged, x);
-                                }
+                            MoreFiles.createParentDirectories(verificationProjectFolderStaged);
+                            MVNProjectCloner.CloneResult result = MVNProjectCloner.cloneMvnProject(
+                                    verificationProjectTemplateFolder,
+                                    verificationProjectFolderStaged,
+                                    gav,
+                                    match.asGAV(),
+                                    new GAV(verificationProjectGroupName, verificationProjectArtifactName, verificationProjectVersion),
+                                    importTranslations,
+                                    testEnviron
+                            );
+                            packagesHaveChangedInClone = result.isRenamedImports();
+                            if (packagesHaveChangedInClone) {
+                                shaded.add(match);
                             }
 
+                            if (result.isCompiled()) {
+                                state = ResultReporter.VerificationState.COMPILED;
+                                compiledSuccessfully.add(match);
+                            }
+                            if (result.isTested()) { // override
+                                state = ResultReporter.VerificationState.TESTED;
+                            }
+
+                            if (result.isTested()) {
+                                boolean vulnerabilityIsPresent = isVulnerabilityPresent(expectedTestSignal, verificationProjectFolderStaged);
+                                if (vulnerabilityIsPresent) {
+                                    vulnerabilityConfirmed.add(match);
+    //                                Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(verificationProjectArtifactName);
+    //                                LOGGER.info("\tmoving verified project folder from {} to {}", verificationProjectFolderStaged, verificationProjectFolderFinal);
+    //                                MVNProjectCloner.moveMvnProject(verificationProjectFolderStaged, verificationProjectFolderFinal);
+    //
+    //                                // re-test to create surefire reports
+    //                                LOGGER.error("running build test on final project {}", verificationProjectFolderFinal);
+    //                                Path buildLog = verificationProjectFolderFinal.resolve(TEST_LOG);
+    //                                try {
+    //                                    ProcessResult pr = MVNExe.mvnTest(verificationProjectFolderFinal, testEnviron);
+    //                                    String out = pr.outputUTF8();
+    //                                    Files.write(buildLog, List.of(out));
+    //
+    //                                    boolean vulnerabilityIsPresentInFinal = isVulnerabilityPresent(expectedTestSignal, verificationProjectFolderFinal);
+    //                                    if (!vulnerabilityIsPresentInFinal) {
+    //                                        LOGGER.error("error testing final project {} -- vulnerability was present in staging but not in final", verificationProjectFolderFinal);
+    //                                    }
+    //                                } catch (Exception x) {
+    //                                    LOGGER.error("error testing final project {}", verificationProjectFolderFinal, x);
+    //                                    String stacktrace = Utils.printStacktrace(x);
+    //                                    Files.write(buildLog, List.of(stacktrace));
+    //                                }
+                                    //TODO: Decide what we want as the "final" output. Options include *copying* (not
+                                    // moving) the staging folder every time (and optionally rerunning the test);
+                                    // symlinking to the cached staging folder (and not rerunning the test).
+                                    Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(povLabel).resolve(verificationProjectArtifactName);
+                                    LOGGER.info("\tVuln verified! Creating a symlink at {} to the cached result at {}", verificationProjectFolderFinal, verificationProjectFolderStaged);
+                                    try {
+                                        MoreFiles.createParentDirectories(verificationProjectFolderFinal);
+                                        Files.createSymbolicLink(verificationProjectFolderFinal, verificationProjectFolderStaged);
+                                    } catch (IOException x) {
+                                        LOGGER.error("Could not create final symlink from " + verificationProjectFolderFinal + " to " + verificationProjectFolderStaged, x);
+                                    }
+                                }
+
+                            }
                         }
                     }
-
                 } catch (Exception e) {
                     LOGGER.error("cannot fetch sources for artifact {}", match.toString(), e);
                 } finally {
@@ -499,6 +509,9 @@ public class Main {
             }
         }
 
+        progressReporter.artifactsProcessed(ProcessingStage.SOURCES_FETCHED, sourcesFetched);
+        progressReporter.artifactsProcessed(ProcessingStage.SOURCES_EXPANDED, sourcesExpanded);
+        progressReporter.artifactsProcessed(ProcessingStage.SOURCES_HAVE_JAVA_FILES, sourcesHaveJavaFiles);
         progressReporter.artifactsProcessed(ProcessingStage.CLONE_DETECTED,cloneDetected);
         progressReporter.artifactsProcessed(ProcessingStage.POV_INSTANCE_COMPILED,compiledSuccessfully);
         progressReporter.artifactsProcessed(ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED,vulnerabilityConfirmed);

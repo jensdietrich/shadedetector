@@ -51,8 +51,6 @@ public class Main {
     private static final String DEFAULT_PROGRESS_STATS_NAME = "stats.log";
     private static final String CACHE_BUILD_NAME = "build";
 
-    public enum ProcessingStage {QUERY_RESULTS, CONSOLIDATED_QUERY_RESULTS, NO_DEPENDENCY_TO_VULNERABLE, CLONE_DETECTED, POC_INSTANCE_COMPILED, POC_INSTANCE_TESTED, POC_INSTANCE_TESTED_SHADED, TESTED}
-
     // resources will be copied into verification projects instantiated for clones
     private static final String[] SCA_SCRIPTS = {
             "/run-owasp-dependencycheck.sh",

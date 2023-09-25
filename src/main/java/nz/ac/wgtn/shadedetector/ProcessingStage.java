@@ -1,0 +1,12 @@
+package nz.ac.wgtn.shadedetector;
+
+public enum ProcessingStage {
+    QUERY_RESULTS,
+    CONSOLIDATED_QUERY_RESULTS,
+    NO_DEPENDENCY_TO_VULNERABLE,
+    CLONE_DETECTED,
+    POC_INSTANCE_COMPILED,
+    POC_INSTANCE_TESTED,
+    POC_INSTANCE_TESTED_SHADED,
+    TESTED
+}

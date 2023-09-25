@@ -509,9 +509,9 @@ public class Main {
         }
 
         progressReporter.artifactsProcessed(ProcessingStage.CLONE_DETECTED,cloneDetected);
-        progressReporter.artifactsProcessed(ProcessingStage.POC_INSTANCE_COMPILED,compiledSuccessfully);
-        progressReporter.artifactsProcessed(ProcessingStage.POC_INSTANCE_TESTED,testedSuccessfully);
-        progressReporter.artifactsProcessed(ProcessingStage.POC_INSTANCE_TESTED_SHADED, Sets.intersection(testedSuccessfully,shaded));
+        progressReporter.artifactsProcessed(ProcessingStage.POV_INSTANCE_COMPILED,compiledSuccessfully);
+        progressReporter.artifactsProcessed(ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED,testedSuccessfully);
+        progressReporter.artifactsProcessed(ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED_SHADED, Sets.intersection(testedSuccessfully,shaded));
 
         try {
             progressReporter.endReporting();

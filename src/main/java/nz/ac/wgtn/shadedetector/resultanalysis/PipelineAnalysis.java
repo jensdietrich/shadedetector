@@ -100,8 +100,8 @@ public class PipelineAnalysis {
                     aggregate(properties, ProcessingStage.CONSOLIDATED_QUERY_RESULTS,versionedCounters,unversionedCounters);
                     aggregate(properties, ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE,versionedCounters,unversionedCounters);
                     aggregate(properties, ProcessingStage.CLONE_DETECTED,versionedCounters,unversionedCounters);
-                    aggregate(properties, ProcessingStage.POC_INSTANCE_COMPILED,versionedCounters,unversionedCounters);
-                    aggregate(properties, ProcessingStage.POC_INSTANCE_TESTED,versionedCounters,unversionedCounters);
+                    aggregate(properties, ProcessingStage.POV_INSTANCE_COMPILED,versionedCounters,unversionedCounters);
+                    aggregate(properties, ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED,versionedCounters,unversionedCounters);
 
                     latexOut.println(asLatexTableRow(
                         FILE2CVE.apply(f),
@@ -109,8 +109,8 @@ public class PipelineAnalysis {
                         getLatexValue(properties, ProcessingStage.CONSOLIDATED_QUERY_RESULTS),
                         getLatexValue(properties, ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE),
                         getLatexValue(properties, ProcessingStage.CLONE_DETECTED),
-                        getLatexValue(properties, ProcessingStage.POC_INSTANCE_COMPILED),
-                        getLatexValue(properties, ProcessingStage.POC_INSTANCE_TESTED)
+                        getLatexValue(properties, ProcessingStage.POV_INSTANCE_COMPILED),
+                        getLatexValue(properties, ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED)
                     ));
 
                     csvOut.println(asCSVRow(
@@ -119,8 +119,8 @@ public class PipelineAnalysis {
                         getCSVValue(properties, ProcessingStage.CONSOLIDATED_QUERY_RESULTS),
                         getCSVValue(properties, ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE),
                         getCSVValue(properties, ProcessingStage.CLONE_DETECTED),
-                        getCSVValue(properties, ProcessingStage.POC_INSTANCE_COMPILED),
-                        getCSVValue(properties, ProcessingStage.POC_INSTANCE_TESTED)
+                        getCSVValue(properties, ProcessingStage.POV_INSTANCE_COMPILED),
+                        getCSVValue(properties, ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED)
                     ));
                 });
 
@@ -132,8 +132,8 @@ public class PipelineAnalysis {
                     getAggregatedValue(ProcessingStage.CONSOLIDATED_QUERY_RESULTS,versionedCounters,unversionedCounters),
                     getAggregatedValue(ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE,versionedCounters,unversionedCounters),
                     getAggregatedValue(ProcessingStage.CLONE_DETECTED,versionedCounters,unversionedCounters),
-                    getAggregatedValue(ProcessingStage.POC_INSTANCE_COMPILED,versionedCounters,unversionedCounters),
-                    getAggregatedValue(ProcessingStage.POC_INSTANCE_TESTED,versionedCounters,unversionedCounters)
+                    getAggregatedValue(ProcessingStage.POV_INSTANCE_COMPILED,versionedCounters,unversionedCounters),
+                    getAggregatedValue(ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED,versionedCounters,unversionedCounters)
             ));
             latexOut.println("\t\\hline");
 

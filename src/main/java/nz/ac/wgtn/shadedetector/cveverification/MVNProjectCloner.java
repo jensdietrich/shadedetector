@@ -30,7 +30,9 @@ public class MVNProjectCloner {
     public static final int COMPILED = 1;
     public static final int TESTED = 2;
 
-    public static class CloneResult {
+    private static final String SERIALISED_RESULTS_FILENAME = "shadedetector-clone-results.ser";
+
+    public static class CloneResult implements Serializable {
 
         private Set<Integer> status = new HashSet<>();
         private String[] logs = new String[3];
@@ -72,13 +74,38 @@ public class MVNProjectCloner {
 
     }
 
+    /**
+     * Attempts to use a cached build result if that already exists at clonedProjectFolder.
+     */
     public static CloneResult cloneMvnProject (Path originalProjectFolder, Path clonedProjectFolder, GAV originalDependency, GAV cloneDependency, GAV clonedProjectCoordinates, Map<String,String> importTranslation,Properties environment) throws IOException, JDOMException {
-
-        CloneResult result = new CloneResult();
-
         Preconditions.checkNotNull(originalProjectFolder);
         Preconditions.checkArgument(Files.exists(originalProjectFolder));
         Preconditions.checkArgument(Files.isDirectory(originalProjectFolder));
+
+        File serialisedResults = clonedProjectFolder.resolve(SERIALISED_RESULTS_FILENAME).toFile();
+        if (clonedProjectFolder.toFile().exists()) {
+            // Build cache hit!
+            try (FileInputStream fis = new FileInputStream(serialisedResults); ObjectInputStream ois = new ObjectInputStream(fis)) {
+                CloneResult result = (CloneResult) ois.readObject();
+                LOGGER.info("Build cache hit for {}", clonedProjectFolder);
+                return result;
+            } catch (ClassNotFoundException x) {
+                throw new IOException("Failed to read serialised clone results from " + serialisedResults.getAbsolutePath(), x);
+            }
+        } else {
+            LOGGER.info("Build cache miss for {}, will build", clonedProjectFolder);
+            CloneResult result = doCloneMvnProject(originalProjectFolder, clonedProjectFolder, originalDependency, cloneDependency, clonedProjectCoordinates, importTranslation, environment);
+
+            try (FileOutputStream fos = new FileOutputStream(serialisedResults); ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+                oos.writeObject(result);
+            }
+            
+            return result;
+        }
+    }
+
+    private static CloneResult doCloneMvnProject (Path originalProjectFolder, Path clonedProjectFolder, GAV originalDependency, GAV cloneDependency, GAV clonedProjectCoordinates, Map<String,String> importTranslation,Properties environment) throws IOException, JDOMException {
+        CloneResult result = new CloneResult();
 
         Path originalPom = originalProjectFolder.resolve("pom.xml");
         Preconditions.checkArgument(Files.exists(originalPom));

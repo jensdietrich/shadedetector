@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.*;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -333,8 +332,6 @@ public class Main {
         progressReporter.artifactsProcessed(ProcessingStage. NO_DEPENDENCY_TO_VULNERABLE, candidates);
 
         // run clone detection
-        AtomicInteger countMatchesAnalysed = new AtomicInteger();
-        AtomicInteger countMatchesAnalysedFailed = new AtomicInteger();
 
         try {
             resultReporter.startReporting(artifact,originalSources);
@@ -396,7 +393,6 @@ public class Main {
         Set<Artifact> shaded = new HashSet<>();
 
         for (Artifact match:candidates) {
-            countMatchesAnalysed.incrementAndGet();
             LOGGER.info("analysing whether artifact {} matches",match.getId());
             ResultReporter.VerificationState state = ResultReporter.VerificationState.NONE;
             Set<CloneDetector.CloneRecord> cloneAnalysesResults = Set.of();
@@ -493,7 +489,6 @@ public class Main {
 
                 } catch (Exception e) {
                     LOGGER.error("cannot fetch sources for artifact {}", match.toString(), e);
-                    countMatchesAnalysedFailed.incrementAndGet();
                 } finally {
                     try {
                         resultReporter.report(artifact, match, sources, cloneAnalysesResults, state, packagesHaveChangedInClone);

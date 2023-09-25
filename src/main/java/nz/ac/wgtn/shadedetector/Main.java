@@ -77,7 +77,6 @@ public class Main {
         options.addOption("r","resultconsolidation",true,"the query result consolidation strategy to be used (optional, default is \"" + CONSOLIDATION_STRATEGY_FACTORY.getDefault().name() + "\")");
 
         options.addRequiredOption("vul","vulnerabilitydemo",true,"a folder containing a Maven project that verifies a vulnerability in the original library with test(s), and can be used as a template to verify the presence of the vulnerability in a clone; values for -g, -a, -v and -sig are read from any contained pov-project.json");
-//        options.addRequiredOption("vos","vulnerabilityoutput_staging",true,"the root folder where for each clone, a project verifying the presence of a vulnerability is created");
         options.addRequiredOption("vov","vulnerabilityoutput_final",true,"the root folder where for each clone, a project created in the staging folder will be moved to if verification succeeds (i.e. if the vulnerability is shown to be present)");
         options.addOption("vg","vulnerabilitygroup",true,"the group name used in the projects generated to verify the presence of a vulnerability (default is \"" + DEFAULT_GENERATED_VERIFICATION_PROJECT_GROUP_NAME + "\")");
         options.addOption("vv","vulnerabilityversion",true,"the version used in the projects generated to verify the presence of a vulnerability (default is \"" + DEFAULT_GENERATED_VERIFICATION_PROJECT_VERSION + "\")");
@@ -350,21 +349,6 @@ public class Main {
             LOGGER.error("error initialising result reporting",x);
         }
 
-//        Path verificationProjectInstancesFolderStaging = null;
-//        if (cmd.hasOption("vulnerabilityoutput_staging")) {
-//            verificationProjectInstancesFolderStaging = Path.of(cmd.getOptionValue("vulnerabilityoutput_staging"));
-//            if (!Files.exists(verificationProjectInstancesFolderStaging)) {
-//                try {
-//                    Files.createDirectories(verificationProjectInstancesFolderStaging);
-//                } catch (IOException e) {
-//                    throw new RuntimeException("cannot create folder " + verificationProjectInstancesFolderStaging,e);
-//                }
-//            }
-//        }
-//        LOGGER.info("verification projects will be created in {}",verificationProjectInstancesFolderStaging);
-//        assert verificationProjectInstancesFolderStaging!=null;
-
-
         // set up signal (may already have been read from pov-projects.json)
         String vulnerabilitySignalAsString = cmd.getOptionValue("vulnerabilitysignal");
         if (vulnerabilitySignalAsString != null) {
@@ -393,7 +377,6 @@ public class Main {
                 }
             }
         }
-//        LOGGER.info("verified projects will be moved from {} to {}",verificationProjectInstancesFolderStaging,verificationProjectInstancesFolderFinal);
         Path buildCacheFolder = Cache.getCache(CACHE_BUILD_NAME).toPath().resolve(povLabel).toAbsolutePath();
         LOGGER.info("verified projects will be symlinked from {} to cached built projects under {}", verificationProjectInstancesFolderFinal, buildCacheFolder);
         assert verificationProjectInstancesFolderFinal!=null;
@@ -440,13 +423,11 @@ public class Main {
                     // TODO abstract threshold
                     if (cloneAnalysesResults.size() > 10) {
                         cloneDetected.add(match);
-
                         LOGGER.info("generating project to verifify vulnerability for " + match);
                         String verificationProjectArtifactName = match.toString().replace(":", "__");
                         LOGGER.info("\tgroupId: " + verificationProjectGroupName);
                         LOGGER.info("\tartifactId: " + verificationProjectArtifactName);
                         LOGGER.info("\tversion: " + verificationProjectVersion);
-//                        Path verificationProjectFolderStaged = verificationProjectInstancesFolderStaging.resolve(verificationProjectArtifactName);
                         Path verificationProjectFolderStaged = buildCacheFolder.resolve(verificationProjectArtifactName);
                         LOGGER.info("\tproject folder: " + verificationProjectFolderStaged);
 

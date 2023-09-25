@@ -2,7 +2,7 @@ package nz.ac.wgtn.shadedetector.resultreporting;
 
 import nz.ac.wgtn.shadedetector.Artifact;
 import nz.ac.wgtn.shadedetector.GAV;
-import nz.ac.wgtn.shadedetector.Main;
+import nz.ac.wgtn.shadedetector.ProcessingStage;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -24,8 +24,8 @@ public class ProgressReporter {
 
     private File output = null;
 
-    private Map<Main.ProcessingStage, Integer> versionedArtifactCounts = new LinkedHashMap<>();
-    private Map<Main.ProcessingStage, Integer> unversionedArtifactCounts = new LinkedHashMap<>();
+    private Map<ProcessingStage, Integer> versionedArtifactCounts = new LinkedHashMap<>();
+    private Map<ProcessingStage, Integer> unversionedArtifactCounts = new LinkedHashMap<>();
 
     public ProgressReporter(File output) {
         this.output = output;
@@ -35,7 +35,7 @@ public class ProgressReporter {
         return output;
     }
 
-    public void artifactsProcessed (Main.ProcessingStage stage, Collection<Artifact> artifacts) {
+    public void artifactsProcessed (ProcessingStage stage, Collection<Artifact> artifacts) {
 
         // remove potential duplicates and unnecessary info
         Set<GAV> versionedArtifactCoordinates = artifacts.stream()
@@ -54,7 +54,7 @@ public class ProgressReporter {
 
     public void endReporting() throws IOException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(output))) {
-            for (Main.ProcessingStage stage:Main.ProcessingStage.values()) {
+            for (ProcessingStage stage: ProcessingStage.values()) {
                 if (versionedArtifactCounts.containsKey(stage)) {
                     String key = stage.name();
                     writer.print(key);

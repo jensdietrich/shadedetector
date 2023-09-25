@@ -1,11 +1,10 @@
 package nz.ac.wgtn.shadedetector.resultanalysis;
 
 import com.google.common.base.Preconditions;
-import nz.ac.wgtn.shadedetector.Main;
+import nz.ac.wgtn.shadedetector.ProcessingStage;
 import nz.ac.wgtn.shadedetector.resultreporting.ProgressReporter;
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -83,8 +82,8 @@ public class PipelineAnalysis {
             // BODY of table
 
             // counters for summary in last row
-            Map<Main.ProcessingStage,Integer> versionedCounters = new HashMap<>();
-            Map<Main.ProcessingStage,Integer> unversionedCounters = new HashMap<>();
+            Map<ProcessingStage,Integer> versionedCounters = new HashMap<>();
+            Map<ProcessingStage,Integer> unversionedCounters = new HashMap<>();
 
             Stream.of(SUMMARY_FOLDER.listFiles())
                 .sorted()
@@ -97,31 +96,31 @@ public class PipelineAnalysis {
                         throw new RuntimeException(e);
                     }
 
-                    aggregate(properties,Main.ProcessingStage.QUERY_RESULTS,versionedCounters,unversionedCounters);
-                    aggregate(properties,Main.ProcessingStage.CONSOLIDATED_QUERY_RESULTS,versionedCounters,unversionedCounters);
-                    aggregate(properties,Main.ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE,versionedCounters,unversionedCounters);
-                    aggregate(properties,Main.ProcessingStage.CLONE_DETECTED,versionedCounters,unversionedCounters);
-                    aggregate(properties,Main.ProcessingStage.POC_INSTANCE_COMPILED,versionedCounters,unversionedCounters);
-                    aggregate(properties,Main.ProcessingStage.POC_INSTANCE_TESTED,versionedCounters,unversionedCounters);
+                    aggregate(properties, ProcessingStage.QUERY_RESULTS,versionedCounters,unversionedCounters);
+                    aggregate(properties, ProcessingStage.CONSOLIDATED_QUERY_RESULTS,versionedCounters,unversionedCounters);
+                    aggregate(properties, ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE,versionedCounters,unversionedCounters);
+                    aggregate(properties, ProcessingStage.CLONE_DETECTED,versionedCounters,unversionedCounters);
+                    aggregate(properties, ProcessingStage.POV_INSTANCE_COMPILED,versionedCounters,unversionedCounters);
+                    aggregate(properties, ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED,versionedCounters,unversionedCounters);
 
                     latexOut.println(asLatexTableRow(
                         FILE2CVE.apply(f),
-                        getLatexValue(properties, Main.ProcessingStage.QUERY_RESULTS),
-                        getLatexValue(properties, Main.ProcessingStage.CONSOLIDATED_QUERY_RESULTS),
-                        getLatexValue(properties, Main.ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE),
-                        getLatexValue(properties, Main.ProcessingStage.CLONE_DETECTED),
-                        getLatexValue(properties, Main.ProcessingStage.POC_INSTANCE_COMPILED),
-                        getLatexValue(properties, Main.ProcessingStage.POC_INSTANCE_TESTED)
+                        getLatexValue(properties, ProcessingStage.QUERY_RESULTS),
+                        getLatexValue(properties, ProcessingStage.CONSOLIDATED_QUERY_RESULTS),
+                        getLatexValue(properties, ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE),
+                        getLatexValue(properties, ProcessingStage.CLONE_DETECTED),
+                        getLatexValue(properties, ProcessingStage.POV_INSTANCE_COMPILED),
+                        getLatexValue(properties, ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED)
                     ));
 
                     csvOut.println(asCSVRow(
                         FILE2CVE.apply(f),
-                        getCSVValue(properties, Main.ProcessingStage.QUERY_RESULTS),
-                        getCSVValue(properties, Main.ProcessingStage.CONSOLIDATED_QUERY_RESULTS),
-                        getCSVValue(properties, Main.ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE),
-                        getCSVValue(properties, Main.ProcessingStage.CLONE_DETECTED),
-                        getCSVValue(properties, Main.ProcessingStage.POC_INSTANCE_COMPILED),
-                        getCSVValue(properties, Main.ProcessingStage.POC_INSTANCE_TESTED)
+                        getCSVValue(properties, ProcessingStage.QUERY_RESULTS),
+                        getCSVValue(properties, ProcessingStage.CONSOLIDATED_QUERY_RESULTS),
+                        getCSVValue(properties, ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE),
+                        getCSVValue(properties, ProcessingStage.CLONE_DETECTED),
+                        getCSVValue(properties, ProcessingStage.POV_INSTANCE_COMPILED),
+                        getCSVValue(properties, ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED)
                     ));
                 });
 
@@ -129,12 +128,12 @@ public class PipelineAnalysis {
 
             latexOut.println(asLatexTableRow(
                     "(sum)",
-                    getAggregatedValue(Main.ProcessingStage.QUERY_RESULTS,versionedCounters,unversionedCounters),
-                    getAggregatedValue(Main.ProcessingStage.CONSOLIDATED_QUERY_RESULTS,versionedCounters,unversionedCounters),
-                    getAggregatedValue(Main.ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE,versionedCounters,unversionedCounters),
-                    getAggregatedValue(Main.ProcessingStage.CLONE_DETECTED,versionedCounters,unversionedCounters),
-                    getAggregatedValue(Main.ProcessingStage.POC_INSTANCE_COMPILED,versionedCounters,unversionedCounters),
-                    getAggregatedValue(Main.ProcessingStage.POC_INSTANCE_TESTED,versionedCounters,unversionedCounters)
+                    getAggregatedValue(ProcessingStage.QUERY_RESULTS,versionedCounters,unversionedCounters),
+                    getAggregatedValue(ProcessingStage.CONSOLIDATED_QUERY_RESULTS,versionedCounters,unversionedCounters),
+                    getAggregatedValue(ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE,versionedCounters,unversionedCounters),
+                    getAggregatedValue(ProcessingStage.CLONE_DETECTED,versionedCounters,unversionedCounters),
+                    getAggregatedValue(ProcessingStage.POV_INSTANCE_COMPILED,versionedCounters,unversionedCounters),
+                    getAggregatedValue(ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED,versionedCounters,unversionedCounters)
             ));
             latexOut.println("\t\\hline");
 
@@ -144,7 +143,7 @@ public class PipelineAnalysis {
         }
     }
 
-    private static void aggregate(Properties properties, Main.ProcessingStage stage,Map<Main.ProcessingStage,Integer> versionedCounters,Map<Main.ProcessingStage,Integer> unversionedCounters) {
+    private static void aggregate(Properties properties, ProcessingStage stage, Map<ProcessingStage,Integer> versionedCounters, Map<ProcessingStage,Integer> unversionedCounters) {
         String v = properties.getProperty(stage.name());
         if (v!=null) {
             int i = Integer.valueOf(v);
@@ -161,7 +160,7 @@ public class PipelineAnalysis {
     }
 
     // get the versioned / versioned values for a key (stage)
-    private static int[] getValues(Properties properties, Main.ProcessingStage stage) {
+    private static int[] getValues(Properties properties, ProcessingStage stage) {
         String v = properties.getProperty(stage.name());
         if (v!=null) {
             int i = Integer.valueOf(v);
@@ -174,19 +173,19 @@ public class PipelineAnalysis {
         return null;
     }
 
-    private static String getLatexValue(Properties properties, Main.ProcessingStage stage) {
+    private static String getLatexValue(Properties properties, ProcessingStage stage) {
         int[] values = getValues(properties,stage);
         assert values.length==2;
         return String.format("%,d", values[0]) + " (" + String.format("%,d", values[1]) + ')';
     }
 
-    private static String getCSVValue(Properties properties, Main.ProcessingStage stage) {
+    private static String getCSVValue(Properties properties, ProcessingStage stage) {
         int[] values = getValues(properties,stage);
         assert values.length==2;
         return String.format("%,d", values[0]) + CSV_SEPARATOR + String.format("%,d", values[1]);
     }
 
-    private static String getAggregatedValue(Main.ProcessingStage stage,Map<Main.ProcessingStage,Integer> versionedCounters,Map<Main.ProcessingStage,Integer> unversionedCounters) {
+    private static String getAggregatedValue(ProcessingStage stage, Map<ProcessingStage,Integer> versionedCounters, Map<ProcessingStage,Integer> unversionedCounters) {
         return String.format("%,d", versionedCounters.get(stage))
             + " ("
             + String.format("%,d", unversionedCounters.get(stage))

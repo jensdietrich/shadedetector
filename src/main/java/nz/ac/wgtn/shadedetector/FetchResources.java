@@ -71,7 +71,6 @@ public class FetchResources {
         if (!artifact.getResources().contains(".pom")) {
             throw new IllegalStateException("no POM found for artifact " + artifact.getId());
         }
-        Path cached = getCachedPOM(gav,".pom");
         return fetchPOM(gav);
     }
 
@@ -100,7 +99,6 @@ public class FetchResources {
         if (Files.exists(cached)) {
             return cached;
         }
-        OkHttpClient client = new OkHttpClient();
         HttpUrl.Builder urlBuilder = HttpUrl.parse(SEARCH_URL).newBuilder();
         String remotePath = gav.getGroupId().replace(".","/");
         remotePath = remotePath + '/' + gav.getArtifactId() + '/' + gav.getVersion() + '/' + gav.getArtifactId() + '-' + gav.getVersion();

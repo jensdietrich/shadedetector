@@ -396,7 +396,7 @@ public class Main {
         // sets mainly used to produce stats later
         Set<Artifact> cloneDetected = new HashSet<>();
         Set<Artifact> compiledSuccessfully = new HashSet<>();
-        Set<Artifact> testedSuccessfully = new HashSet<>();
+        Set<Artifact> vulnerabilityConfirmed = new HashSet<>();
         Set<Artifact> shaded = new HashSet<>();
 
         for (Artifact match:candidates) {
@@ -457,7 +457,7 @@ public class Main {
                         if (result.isTested()) {
                             boolean vulnerabilityIsPresent = isVulnerabilityPresent(expectedTestSignal, verificationProjectFolderStaged);
                             if (vulnerabilityIsPresent) {
-                                testedSuccessfully.add(match);
+                                vulnerabilityConfirmed.add(match);
 //                                Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(verificationProjectArtifactName);
 //                                LOGGER.info("\tmoving verified project folder from {} to {}", verificationProjectFolderStaged, verificationProjectFolderFinal);
 //                                MVNProjectCloner.moveMvnProject(verificationProjectFolderStaged, verificationProjectFolderFinal);
@@ -510,8 +510,8 @@ public class Main {
 
         progressReporter.artifactsProcessed(ProcessingStage.CLONE_DETECTED,cloneDetected);
         progressReporter.artifactsProcessed(ProcessingStage.POV_INSTANCE_COMPILED,compiledSuccessfully);
-        progressReporter.artifactsProcessed(ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED,testedSuccessfully);
-        progressReporter.artifactsProcessed(ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED_SHADED, Sets.intersection(testedSuccessfully,shaded));
+        progressReporter.artifactsProcessed(ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED,vulnerabilityConfirmed);
+        progressReporter.artifactsProcessed(ProcessingStage.POV_INSTANCE_VULNERABILITY_CONFIRMED_SHADED, Sets.intersection(vulnerabilityConfirmed,shaded));
 
         try {
             progressReporter.endReporting();

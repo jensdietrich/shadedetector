@@ -3,6 +3,7 @@ package nz.ac.wgtn.shadedetector;
 public enum ProcessingStage {
     QUERY_RESULTS,
     CONSOLIDATED_QUERY_RESULTS,
+    VALID_POM,
     NO_DEPENDENCY_TO_VULNERABLE,
     CLONE_DETECTED,
     POV_INSTANCE_COMPILED,

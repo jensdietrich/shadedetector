@@ -313,28 +313,24 @@ public class Main {
 
         // eliminate matches with dependency -- those are likely to be detected by existing checkers
         List<Artifact> candidates = new ArrayList<>();
+        List<Artifact> candidatesWithValidPom = new ArrayList<>();
 
-        AtomicInteger matchesWithDependency = new AtomicInteger();
-        AtomicInteger matchesWithoutDependency = new AtomicInteger();
-        AtomicInteger matchesWhereDependencyAnalysisFailed  = new AtomicInteger();
         for (Artifact match:consolidatedMatches) {
             try {
-                if (POMAnalysis.references(match,artifact.getGroupId(),artifact.getArtifactId())) {
-                    matchesWithDependency.incrementAndGet();
-                }
-                else {
-                    matchesWithoutDependency.incrementAndGet();
+                if (!POMAnalysis.references(match, artifact.getGroupId(), artifact.getArtifactId())) {
                     candidates.add(match);
                 }
+
+                candidatesWithValidPom.add(match);
             } catch (Exception e) {
-                matchesWhereDependencyAnalysisFailed.incrementAndGet();
                 LOGGER.info("Error fetching or analysing pom for {}",match.getId(),e);
             }
         }
-        LOGGER.info("{} potential matches have declared dependency on {}:{}, will be excluded from further analysis",matchesWithDependency.get(),artifact.getGroupId(),artifact.getArtifactId());
-        LOGGER.info("{} potential matches detected without declared dependency on {}:{}, will be analysed for clones",matchesWithoutDependency.get(),artifact.getGroupId(),artifact.getArtifactId());
-        LOGGER.info("dependency analysis failed for {} artifacts",matchesWhereDependencyAnalysisFailed.get());
-        progressReporter.artifactsProcessed(ProcessingStage.NO_DEPENDENCY_TO_VULNERABLE,candidates);
+        LOGGER.info("{} potential matches have declared dependency on {}:{}, will be excluded from further analysis", candidatesWithValidPom.size() - candidates.size(), artifact.getGroupId(), artifact.getArtifactId());
+        LOGGER.info("{} potential matches detected without declared dependency on {}:{}, will be analysed for clones", candidates.size(), artifact.getGroupId(), artifact.getArtifactId());
+        LOGGER.info("dependency analysis failed for {} artifacts", consolidatedMatches.size() - candidatesWithValidPom.size());
+        progressReporter.artifactsProcessed(ProcessingStage. VALID_POM, candidatesWithValidPom);
+        progressReporter.artifactsProcessed(ProcessingStage. NO_DEPENDENCY_TO_VULNERABLE, candidates);
 
         // run clone detection
         AtomicInteger countMatchesAnalysed = new AtomicInteger();

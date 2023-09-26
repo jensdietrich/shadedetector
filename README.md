@@ -85,6 +85,21 @@ In principle the tool can be run with Java 11. However, we did encounter rare ca
 
 It is also possible to add artifacts to `nz.ac.wgtn.shadedetector.Blacklist` to exclude them from the analysis.
 
+## Caching
+
+To (dramatically) speed up subsequent runs, `shadedetector` caches:
+1. Maven Central Repo REST API queries, by default in 5 batches of up to 200 results each
+2. Candidate clone artifact `pom.xml`s and sources
+3. Maven builds and test results of clone TPOVs
+
+By default, all caching is done under the directory `.cache` in the current directory, but this can be changed with `-cache`.
+
+NOTE: Multiple concurrent invocations of `shadedetector` will cooperate in using the cache safely -- **but only if the cache root directory is on a local filesystem.** NFS and possibly other network-based filesystems lack the guarantees of atomicity needed. A local filesystem will be much faster in any case.
+
+## Final output directory
+
+By default, for each vulnerable cloned artifact, `shadedetector` copies its cached build directory into `<finalDir>/<povLabel>/<safeName>`, where `<finalDir>` is the directory specified with `-vov`, `<povLabel>` is the label for the vulnerability (which defaults to the basename of the path given to `-vul` but can be changed with `-povlabel`) and `<safeName>` is a name constructed from the vulnerable GAV by replacing colons with `..`. For doing large batches of runs, specifying `--finaldirmode SYMLINK` will instead symlink to the cached build dirs, saving disk space.
+
 ## Customising / Extending
 
 Several strategies are implemented as pluggable services. I.e. strategies are described via interfaces, with service providers declared in library manifests, see for instance [src/main/resources/META_INF/services](src/main/resources/META_INF/services) for the onboard default providers. Each provider has a unique name that can be used as an argument value in the CLI. All interfaces are defined in `nz.ac.wgtn.shadedetector`. The service is selected by a factory `nz.ac.wgtn.shadedetector.<Service>Factory` that also defines what is being used as the default service provider.

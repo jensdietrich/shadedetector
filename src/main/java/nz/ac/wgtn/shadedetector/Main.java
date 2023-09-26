@@ -70,7 +70,7 @@ public class Main {
 
         // we need a little language here to pass parameters, such as list:class1,class2
         // needs default
-        options.addOption("s", "classselector",true, "the strategy used to select classes (optional, default is\"" + CLASS_SELECTOR_FACTORY.getDefault().name() + "\")");
+        options.addOption("s", "classselector",true, "the strategy used to select classes (optional, default is \"" + CLASS_SELECTOR_FACTORY.getDefault().name() + "\")");
         options.addOption("o", "output",true, "the component used to process and report results (optional, default is \"" + RESULT_REPORTER_FACTORY.getDefault().name() + "\")");
         options.addOption("o1", "output1",true, "an additional component used to process and report results");
         options.addOption("o2", "output2",true, "an additional component used to process and report results");
@@ -79,7 +79,7 @@ public class Main {
         options.addOption("r","resultconsolidation",true,"the query result consolidation strategy to be used (optional, default is \"" + CONSOLIDATION_STRATEGY_FACTORY.getDefault().name() + "\")");
 
         options.addRequiredOption("vul","vulnerabilitydemo",true,"a folder containing a Maven project that verifies a vulnerability in the original library with test(s), and can be used as a template to verify the presence of the vulnerability in a clone; values for -g, -a, -v and -sig are read from any contained pov-project.json");
-        options.addRequiredOption("vov","vulnerabilityoutput_final",true,"the root folder where for each clone, a project created in the staging folder will be moved to if verification succeeds (i.e. if the vulnerability is shown to be present)");
+        options.addRequiredOption("vov","vulnerabilityoutput_final",true,"the root folder where for each clone, a project created in the build cache folder will be copied/symlinked/moved if verification succeeds (i.e. if the vulnerability is shown to be present)");
         options.addOption("vg","vulnerabilitygroup",true,"the group name used in the projects generated to verify the presence of a vulnerability (default is \"" + DEFAULT_GENERATED_VERIFICATION_PROJECT_GROUP_NAME + "\")");
         options.addOption("vv","vulnerabilityversion",true,"the version used in the projects generated to verify the presence of a vulnerability (default is \"" + DEFAULT_GENERATED_VERIFICATION_PROJECT_VERSION + "\")");
 
@@ -88,7 +88,7 @@ public class Main {
         options.addOption("l","log",true,"a log file name (optional, if missing logs will only be written to console)");
         options.addOption("cache", "cachedir", true, "path to root of cache folder hierarchy (default is \"" + Cache.getRoot() +"\")");
 
-        options.addOption("sig","vulnerabilitysignal",true,"indicates the test signal indicating that the vulnerability is present, must be of one of: " + Stream.of(TestSignal.values()).map(v -> v.name()).collect(Collectors.joining(",")) + " (default read from testSignalWhenVulnerable in PoV's pov-project.json)");
+        options.addOption("sig","vulnerabilitysignal",true,"the test signal indicating that the vulnerability is present, must be of one of: " + Stream.of(TestSignal.values()).map(v -> v.name()).collect(Collectors.joining(",")) + " (default read from testSignalWhenVulnerable in PoV's pov-project.json)");
 
         options.addOption("fc", "filterclassnames", true, "a regex restricting the class names to be considered (non-matching class names will be discarded). For debugging.");
         options.addOption("fa", "filterartifacts", true, "a regex restricting the artifact GAVs to be considered (non-matching GAVs will be discarded). For debugging.");

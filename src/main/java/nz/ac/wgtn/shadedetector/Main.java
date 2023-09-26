@@ -52,6 +52,9 @@ public class Main {
     private static final int DEFAULT_MIN_CLONED_CLASSES = 11;   // Was originally "> 10", comparison is now ">="
     private static final String CACHE_BUILD_NAME = "build";
 
+    enum FinalDirMode { COPY, SYMLINK, OLD_UNSAFE_MOVE_AND_RETEST };
+    private static final FinalDirMode DEFAULT_FINAL_DIR_MODE = FinalDirMode.COPY;
+
     // resources will be copied into verification projects instantiated for clones
     private static final String[] SCA_SCRIPTS = {
             "/run-owasp-dependencycheck.sh",
@@ -96,6 +99,7 @@ public class Main {
         options.addOption("bc", "batchcount", true, "the number of by-class REST API search query batches per candidate (optional, default is " + ArtifactSearch.BATCHES + ")");
         options.addOption("bs", "batchsize", true, "the maximum number of rows requested in each by-class REST API search query batch (optional, default is " + ArtifactSearch.ROWS_PER_BATCH + ")");
         options.addOption("mcc", "minclonedclasses", true, "the minimum number of classes detected as clones needed to trigger compilation and testing (optional, default is " + DEFAULT_MIN_CLONED_CLASSES + ")");
+        options.addOption("fdm", "finaldirmode", true, "how to construct the contents of the final directory specified with -vov (optional, one of " + Stream.of(FinalDirMode.values()).map(v -> v.name()).collect(Collectors.joining(", ")) + "; default is " + DEFAULT_FINAL_DIR_MODE + ")");
 
         CommandLineParser parser = new DefaultParser();
 
@@ -238,6 +242,8 @@ public class Main {
             }
         }
 
+        FinalDirMode finalDirMode = FinalDirMode.valueOf(cmd.getOptionValue("finaldirmode", DEFAULT_FINAL_DIR_MODE.name()).toUpperCase());
+        LOGGER.info("Final dir processing mode: {}", finalDirMode);
 
         ResultReporter resultReporter = resultReporters.size()==1 ?
             resultReporters.get(0) :
@@ -475,37 +481,56 @@ public class Main {
                                 boolean vulnerabilityIsPresent = isVulnerabilityPresent(expectedTestSignal, verificationProjectFolderStaged, () -> surefireReportsGenerated.add(match));
                                 if (vulnerabilityIsPresent) {
                                     vulnerabilityConfirmed.add(match);
-    //                                Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(verificationProjectArtifactName);
-    //                                LOGGER.info("\tmoving verified project folder from {} to {}", verificationProjectFolderStaged, verificationProjectFolderFinal);
-    //                                MVNProjectCloner.moveMvnProject(verificationProjectFolderStaged, verificationProjectFolderFinal);
-    //
-    //                                // re-test to create surefire reports
-    //                                LOGGER.error("running build test on final project {}", verificationProjectFolderFinal);
-    //                                Path buildLog = verificationProjectFolderFinal.resolve(TEST_LOG);
-    //                                try {
-    //                                    ProcessResult pr = MVNExe.mvnTest(verificationProjectFolderFinal, testEnviron);
-    //                                    String out = pr.outputUTF8();
-    //                                    Files.write(buildLog, List.of(out));
-    //
-    //                                    boolean vulnerabilityIsPresentInFinal = isVulnerabilityPresent(expectedTestSignal, verificationProjectFolderFinal);
-    //                                    if (!vulnerabilityIsPresentInFinal) {
-    //                                        LOGGER.error("error testing final project {} -- vulnerability was present in staging but not in final", verificationProjectFolderFinal);
-    //                                    }
-    //                                } catch (Exception x) {
-    //                                    LOGGER.error("error testing final project {}", verificationProjectFolderFinal, x);
-    //                                    String stacktrace = Utils.printStacktrace(x);
-    //                                    Files.write(buildLog, List.of(stacktrace));
-    //                                }
-                                    //TODO: Decide what we want as the "final" output. Options include *copying* (not
-                                    // moving) the staging folder every time (and optionally rerunning the test);
-                                    // symlinking to the cached staging folder (and not rerunning the test).
                                     Path verificationProjectFolderFinal = verificationProjectInstancesFolderFinal.resolve(povLabel).resolve(verificationProjectArtifactName);
-                                    LOGGER.info("\tVuln verified! Creating a symlink at {} to the cached result at {}", verificationProjectFolderFinal, verificationProjectFolderStaged);
-                                    try {
-                                        MoreFiles.createParentDirectories(verificationProjectFolderFinal);
-                                        Files.createSymbolicLink(verificationProjectFolderFinal, verificationProjectFolderStaged);
-                                    } catch (IOException x) {
-                                        LOGGER.error("Could not create final symlink from " + verificationProjectFolderFinal + " to " + verificationProjectFolderStaged, x);
+                                    switch (finalDirMode) {
+                                        case COPY: {
+                                            // Fairly light and fast, and creates full directories ready to be added to a GitHub repo
+                                            LOGGER.info("\tVuln verified! Copying cached project build from {} to {}", verificationProjectFolderStaged, verificationProjectFolderFinal);
+                                            try {
+                                                MVNProjectCloner.copyMvnProject(verificationProjectFolderStaged, verificationProjectFolderFinal);
+                                            } catch (IOException x) {
+                                                LOGGER.error("Could not copy verified project from {} to final dir {}", verificationProjectFolderStaged, verificationProjectFolderFinal, x);
+                                            }
+                                            break;
+                                        }
+
+                                        case SYMLINK: {
+                                            // Light and fast -- good for large batches of runs
+                                            LOGGER.info("\tVuln verified! Creating a symlink at {} to the cached result at {}", verificationProjectFolderFinal, verificationProjectFolderStaged);
+                                            try {
+                                                MoreFiles.createParentDirectories(verificationProjectFolderFinal);
+                                                Files.createSymbolicLink(verificationProjectFolderFinal, verificationProjectFolderStaged);
+                                            } catch (IOException x) {
+                                                LOGGER.error("Could not create final symlink from {} to {}", verificationProjectFolderFinal, verificationProjectFolderStaged, x);
+                                            }
+                                            break;
+                                        }
+
+                                        case OLD_UNSAFE_MOVE_AND_RETEST: {
+                                            // The original behaviour. Unsafe since other processes may be concurrently reading from the cached build.
+                                            // Also it deletes the build cache entry, so future runs will have to build it again.
+                                            LOGGER.info("\tmoving verified project folder from {} to {}", verificationProjectFolderStaged, verificationProjectFolderFinal);
+                                            MVNProjectCloner.moveMvnProject(verificationProjectFolderStaged, verificationProjectFolderFinal);
+
+                                            // re-test to create surefire reports
+                                            LOGGER.error("running build test on final project {}", verificationProjectFolderFinal);
+                                            Path buildLog = verificationProjectFolderFinal.resolve(TEST_LOG);
+                                            try {
+                                                ProcessResult pr = MVNExe.mvnTest(verificationProjectFolderFinal, testEnviron);
+                                                String out = pr.outputUTF8();
+                                                Files.write(buildLog, List.of(out));
+
+                                                boolean vulnerabilityIsPresentInFinal = isVulnerabilityPresent(expectedTestSignal, verificationProjectFolderFinal, () -> surefireReportsGenerated.add(match));
+                                                if (!vulnerabilityIsPresentInFinal) {
+                                                    LOGGER.error("error testing final project {} -- vulnerability was present in staging but not in final", verificationProjectFolderFinal);
+                                                }
+                                            } catch (Exception x) {
+                                                LOGGER.error("error testing final project {}", verificationProjectFolderFinal, x);
+                                                String stacktrace = Utils.printStacktrace(x);
+                                                Files.write(buildLog, List.of(stacktrace));
+                                            }
+                                            break;
+                                        }
                                     }
                                 }
 

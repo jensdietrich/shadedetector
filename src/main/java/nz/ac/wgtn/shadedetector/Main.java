@@ -15,6 +15,7 @@ import nz.ac.wgtn.shadedetector.resultreporting.CombinedResultReporter;
 import nz.ac.wgtn.shadedetector.resultreporting.ProgressReporter;
 import org.apache.commons.cli.*;
 import org.jdom2.JDOMException;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeroturnaround.exec.ProcessResult;
@@ -23,6 +24,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.*;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -229,15 +231,16 @@ public class Main {
         }
 
         Properties testEnviron = new Properties();
+        Path testEnvironFile = null; // Will hash the contents for the build cache path later
         if (cmd.hasOption("testenvironment")) {
             String testEnvironDef = cmd.getOptionValue("testenvironment");
-            Path testEvironFile = Path.of(testEnvironDef);
-            Preconditions.checkArgument(Files.exists(testEvironFile),"test environment file not found: " + testEvironFile);
-            try (Reader reader = Files.newBufferedReader(testEvironFile)) {
+            testEnvironFile = Path.of(testEnvironDef);
+            Preconditions.checkArgument(Files.exists(testEnvironFile),"test environment file not found: " + testEnvironFile);
+            try (Reader reader = Files.newBufferedReader(testEnvironFile)) {
                 testEnviron.load(reader);
-                LOGGER.error("test environment loaded from {}",testEvironFile);
+                LOGGER.error("test environment loaded from {}",testEnvironFile);
             } catch (IOException e) {
-                LOGGER.error("cannot load test environment from {}",testEvironFile,e);
+                LOGGER.error("cannot load test environment from {}",testEnvironFile,e);
                 throw new RuntimeException(e);
             }
         }
@@ -389,7 +392,13 @@ public class Main {
                 }
             }
         }
-        Path buildCacheFolder = Cache.getCache(CACHE_BUILD_NAME).toPath().resolve(povLabel).toAbsolutePath();
+
+        Path buildCacheFolder = null;
+        try {
+            buildCacheFolder = Cache.getCache(CACHE_BUILD_NAME).toPath().resolve(getEnvPathComponent(testEnvironFile)).resolve(povLabel).toAbsolutePath();
+        } catch (Exception x) {
+            throw new RuntimeException("Could not hash environment file contents", x);
+        }
         LOGGER.info("verified projects will be symlinked from {} to cached built projects under {}", verificationProjectInstancesFolderFinal, buildCacheFolder);
         assert verificationProjectInstancesFolderFinal!=null;
 
@@ -639,6 +648,10 @@ public class Main {
         assert service!=null;
         LOGGER.info("using {}: {}",description,service.name());
         return service;
+    }
+
+    private static String getEnvPathComponent(@Nullable Path envFile) throws IOException, NoSuchAlgorithmException {
+        return "env-" + Utils.md5HashFile(envFile);
     }
 
     private static void printHelp(Options options) {

@@ -32,9 +32,9 @@ The project must be build with Java 11 or better. To build run `mvn package`. Th
 ## Running 
 
 ```
-usage: java -cp <classpath> Main [-a <arg>] [-bc <arg>] [-bs <arg>] [-c <arg>] [-cache <arg>] [-env <arg>] [-fa <arg>] [-fc <arg>] [-g <arg>] [-l
-       <arg>] [-mcc <arg>] [-msc <arg>] [-o <arg>] [-o1 <arg>] [-o2 <arg>] [-o3 <arg>] [-pl <arg>] [-ps <arg>] [-r <arg>] [-s <arg>] [-sig <arg>] [-v
-       <arg>] [-vg <arg>] -vov <arg> -vul <arg> [-vv <arg>]
+usage: java -cp <classpath> Main [-a <arg>] [-bc <arg>] [-bs <arg>] [-c <arg>] [-cache <arg>] [-env <arg>] [-fa <arg>] [-fc <arg>] [-fdm <arg>] [-g
+       <arg>] [-l <arg>] [-mcc <arg>] [-msc <arg>] [-o <arg>] [-o1 <arg>] [-o2 <arg>] [-o3 <arg>] [-pl <arg>] [-ps <arg>] [-r <arg>] [-s <arg>] [-sig
+       <arg>] [-v <arg>] [-vg <arg>] -vov <arg> -vul <arg> [-vv <arg>]
 Arguments:
 
  -a,--artifact <arg>                      the Maven artifact id of the artifact queried for clones (default read from PoV's pov-project.json)
@@ -47,6 +47,8 @@ Arguments:
  -fa,--filterartifacts <arg>              a regex restricting the artifact GAVs to be considered (non-matching GAVs will be discarded). For debugging.
  -fc,--filterclassnames <arg>             a regex restricting the class names to be considered (non-matching class names will be discarded). For
                                           debugging.
+ -fdm,--finaldirmode <arg>                how to construct the contents of the final directory specified with -vov (optional, one of COPY, SYMLINK,
+                                          OLD_UNSAFE_MOVE_AND_RETEST; default is COPY)
  -g,--group <arg>                         the Maven group id of the artifact queried for clones (default read from PoV's pov-project.json)
  -l,--log <arg>                           a log file name (optional, if missing logs will only be written to console)
  -mcc,--minclonedclasses <arg>            the minimum number of classes detected as clones needed to trigger compilation and testing (optional,

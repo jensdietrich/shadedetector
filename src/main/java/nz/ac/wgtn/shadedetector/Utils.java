@@ -264,7 +264,8 @@ public class Utils {
         // "No Java programmer needs a stream of bytes": https://stackoverflow.com/a/32459764
         StringBuilder hexBuilder = new StringBuilder();
         for (byte b : md5) {
-            hexBuilder.append(b < 16 ? "0" : "").append(Integer.toHexString(b));
+            int unsignedByte = Byte.toUnsignedInt(b);
+            hexBuilder.append(unsignedByte < 16 ? "0" : "").append(Integer.toHexString(unsignedByte));
         }
         return hexBuilder.toString();
     }

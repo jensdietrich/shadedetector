@@ -4,6 +4,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.io.CharStreams;
 import net.lingala.zip4j.ZipFile;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -25,6 +26,8 @@ import java.io.*;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -247,4 +250,23 @@ public class Utils {
             throw new RuntimeException(e);
         }
     };
+
+    /**
+     * MD5-hash the contents of a file to its hex representation.
+     * @param path the path to the file to hash. {@code null} is treated as an empty file.
+     */
+    @NotNull
+    public static String md5HashFile(@Nullable Path path) throws IOException, NoSuchAlgorithmException {
+        byte[] data = path == null ? new byte[0] : Files.readAllBytes(path);
+        MessageDigest digest = MessageDigest.getInstance("MD5");
+        byte[] md5 = digest.digest(data);
+
+        // "No Java programmer needs a stream of bytes": https://stackoverflow.com/a/32459764
+        StringBuilder hexBuilder = new StringBuilder();
+        for (byte b : md5) {
+            int unsignedByte = Byte.toUnsignedInt(b);
+            hexBuilder.append(unsignedByte < 16 ? "0" : "").append(Integer.toHexString(unsignedByte));
+        }
+        return hexBuilder.toString();
+    }
 }

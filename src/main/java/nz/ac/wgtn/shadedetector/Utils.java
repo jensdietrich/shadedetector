@@ -309,9 +309,14 @@ public class Utils {
         String osName = System.getProperty("os.name");
         if (osName.toLowerCase().contains("linux")) {
             //TODO: Parsing the output of `update-java-alternatives --list` would be better
-            String guessedPath = "/usr/lib/jvm/java-1." + jdkVersion + ".0-openjdk-amd64";
-            if (Files.isDirectory(Path.of(guessedPath))) {
-                return guessedPath;
+            for (String guessedPath : List.of(
+                    "/usr/lib/jvm/java-1." + jdkVersion + ".0-openjdk-amd64",
+                    "/usr/pkg/java/sun-" + jdkVersion,
+                    "/usr/pkg/java/openjdk" + jdkVersion)
+            ) {
+                if (Files.isDirectory(Path.of(guessedPath))) {
+                    return guessedPath;
+                }
             }
         }
 

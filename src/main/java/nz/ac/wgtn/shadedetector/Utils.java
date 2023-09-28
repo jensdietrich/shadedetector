@@ -272,11 +272,12 @@ public class Utils {
         TreeSet<String> sortedSet = new TreeSet<>(properties.stringPropertyNames());
 
         byte[] data;
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream(); PrintWriter writer = new PrintWriter(baos, true)) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream(); PrintWriter writer = new PrintWriter(baos)) {
             for (String key : sortedSet) {
                 writer.print(key + "=" + properties.getProperty(key) + "\n");
             }
 
+            writer.flush();
             data = baos.toByteArray();
         }
 

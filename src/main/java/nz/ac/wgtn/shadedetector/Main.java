@@ -240,10 +240,9 @@ public class Main {
         }
 
         Properties testEnviron = new Properties(defaultEnvironFromJdkVersion);
-        Path testEnvironFile = null; // Will hash the contents for the build cache path later
         if (cmd.hasOption("testenvironment")) {
             String testEnvironDef = cmd.getOptionValue("testenvironment");
-            testEnvironFile = Path.of(testEnvironDef);
+            Path testEnvironFile = Path.of(testEnvironDef);
             Preconditions.checkArgument(Files.exists(testEnvironFile),"test environment file not found: " + testEnvironFile);
             try (Reader reader = Files.newBufferedReader(testEnvironFile)) {
                 testEnviron.load(reader);
@@ -404,17 +403,9 @@ public class Main {
 
         Path buildCacheFolder = null;
         try {
-//            buildCacheFolder = Cache.getCache(CACHE_BUILD_NAME).toPath().resolve(getEnvPathComponent(testEnvironFile)).resolve(povLabel).toAbsolutePath();
             buildCacheFolder = Cache.getCache(CACHE_BUILD_NAME).toPath().resolve(getEnvPathComponent(testEnviron)).resolve(povLabel).toAbsolutePath();
-
-            //DEBUG
-            Path buildCacheFolderOLD = Cache.getCache(CACHE_BUILD_NAME).toPath().resolve(getEnvPathComponentOLD(testEnvironFile)).resolve(povLabel).toAbsolutePath();
-            LOGGER.debug("(Build cache folder using old file-based MD5 hash: {}", buildCacheFolderOLD);
-            if (!buildCacheFolderOLD.equals(buildCacheFolder)) {
-                LOGGER.debug("ZOINKS! Different old and new build cache folders!");
-            }
         } catch (Exception x) {
-            throw new RuntimeException("Could not hash environment file contents", x);
+            throw new RuntimeException("Could not hash environment contents", x);
         }
         LOGGER.info("verified projects will be symlinked from {} to cached built projects under {}", verificationProjectInstancesFolderFinal, buildCacheFolder);
         assert verificationProjectInstancesFolderFinal!=null;
@@ -665,10 +656,6 @@ public class Main {
         assert service!=null;
         LOGGER.info("using {}: {}",description,service.name());
         return service;
-    }
-
-    private static String getEnvPathComponentOLD(@Nullable Path envFile) throws IOException, NoSuchAlgorithmException {
-        return "env-" + Utils.md5HashFile(envFile);
     }
 
     private static String getEnvPathComponent(Properties properties) throws IOException, NoSuchAlgorithmException {

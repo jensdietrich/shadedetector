@@ -15,6 +15,8 @@ public class PovProject {
     private String fixVersion = null;
     private TestSignal testSignalWhenVulnerable = null;
     private List<String> vulnerableVersions = null;
+
+    private String jdkVersion = null;
     private List<String> references = null;
 
     public String getId() {
@@ -56,6 +58,10 @@ public class PovProject {
     public void setVulnerableVersions(List<String> vulnerableVersions) {
         this.vulnerableVersions = vulnerableVersions;
     }
+
+    public String getJdkVersion() { return jdkVersion; }
+
+    public void setJdkVersion(String jdkVersion) { this.jdkVersion = jdkVersion;}
 
     public List<String> getReferences() {
         return references;

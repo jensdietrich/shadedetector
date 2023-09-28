@@ -269,4 +269,24 @@ public class Utils {
         }
         return hexBuilder.toString();
     }
+
+    /**
+     * Try to determine a suitable {@code JAVA_HOME} path for a given JDK version on the current platform.
+     * @param jdkVersion a short numeric string like "8" or "11"
+     * @return a suitable value for {@code JAVA_HOME} environment variable
+     * @throws RuntimeException if it cannot guess a suitable path
+     */
+    public static String getJavaHomeForJdkVersion(String jdkVersion) {
+        //TODO: Add support for other OSes
+        String osName = System.getProperty("os.name");
+        if (osName.toLowerCase().contains("linux")) {
+            //TODO: Parsing the output of `update-java-alternatives --list` would be better
+            String guessedPath = "/usr/lib/jvm/java-1." + jdkVersion + ".0-openjdk-amd64";
+            if (Files.isDirectory(Path.of(guessedPath))) {
+                return guessedPath;
+            }
+        }
+
+        throw new RuntimeException("Could not determine a JAVA_HOME path for jdkVersion=" + jdkVersion + " on OS " + osName);
+    }
 }

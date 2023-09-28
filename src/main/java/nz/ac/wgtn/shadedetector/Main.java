@@ -158,6 +158,8 @@ public class Main {
         String povLabel = cmd.getOptionValue("povlabel", verificationProjectTemplateFolder.getFileName().toString());
         LOGGER.info("PoV label is '{}'", povLabel);
         // Get defaults from PoV metadata
+
+        Properties defaultEnvironFromJdkVersion = new Properties();
         File povMetadataFile = verificationProjectTemplateFolder.resolve("pov-project.json").toFile();
         if (povMetadataFile.exists()) {
             try {
@@ -189,6 +191,13 @@ public class Main {
                 catch (Exception e) {
                     LOGGER.error("Exception while reading pom.xml to extract version", e);
                     System.exit(1);
+                }
+
+                @Nullable String jdkVersion = povMetaData.getJdkVersion();
+                if (jdkVersion != null) {
+                    String javaHome = Utils.getJavaHomeForJdkVersion(jdkVersion);
+                    LOGGER.info("Setting JAVA_HOME={} based on jdkVersion={} from pov-project.json", javaHome, jdkVersion);
+                    defaultEnvironFromJdkVersion.setProperty("JAVA_HOME", javaHome);
                 }
             } catch (FileNotFoundException e) {
                 LOGGER.error("Error instantiating test signal from pov meta data");
@@ -230,7 +239,7 @@ public class Main {
             resultReporters.add(instantiateOptional(RESULT_REPORTER_FACTORY,cmd,"result reporter","output3"));
         }
 
-        Properties testEnviron = new Properties();
+        Properties testEnviron = new Properties(defaultEnvironFromJdkVersion);
         Path testEnvironFile = null; // Will hash the contents for the build cache path later
         if (cmd.hasOption("testenvironment")) {
             String testEnvironDef = cmd.getOptionValue("testenvironment");

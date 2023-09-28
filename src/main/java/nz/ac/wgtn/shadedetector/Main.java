@@ -158,6 +158,8 @@ public class Main {
         String povLabel = cmd.getOptionValue("povlabel", verificationProjectTemplateFolder.getFileName().toString());
         LOGGER.info("PoV label is '{}'", povLabel);
         // Get defaults from PoV metadata
+
+        Properties defaultEnvironFromJdkVersion = new Properties();
         File povMetadataFile = verificationProjectTemplateFolder.resolve("pov-project.json").toFile();
         if (povMetadataFile.exists()) {
             try {
@@ -189,6 +191,13 @@ public class Main {
                 catch (Exception e) {
                     LOGGER.error("Exception while reading pom.xml to extract version", e);
                     System.exit(1);
+                }
+
+                @Nullable String jdkVersion = povMetaData.getJdkVersion();
+                if (jdkVersion != null) {
+                    String javaHome = Utils.getJavaHomeForJdkVersion(jdkVersion);
+                    LOGGER.info("Setting JAVA_HOME={} based on jdkVersion={} from pov-project.json", javaHome, jdkVersion);
+                    defaultEnvironFromJdkVersion.setProperty("JAVA_HOME", javaHome);
                 }
             } catch (FileNotFoundException e) {
                 LOGGER.error("Error instantiating test signal from pov meta data");
@@ -230,11 +239,10 @@ public class Main {
             resultReporters.add(instantiateOptional(RESULT_REPORTER_FACTORY,cmd,"result reporter","output3"));
         }
 
-        Properties testEnviron = new Properties();
-        Path testEnvironFile = null; // Will hash the contents for the build cache path later
+        Properties testEnviron = new Properties(defaultEnvironFromJdkVersion);
         if (cmd.hasOption("testenvironment")) {
             String testEnvironDef = cmd.getOptionValue("testenvironment");
-            testEnvironFile = Path.of(testEnvironDef);
+            Path testEnvironFile = Path.of(testEnvironDef);
             Preconditions.checkArgument(Files.exists(testEnvironFile),"test environment file not found: " + testEnvironFile);
             try (Reader reader = Files.newBufferedReader(testEnvironFile)) {
                 testEnviron.load(reader);
@@ -395,9 +403,9 @@ public class Main {
 
         Path buildCacheFolder = null;
         try {
-            buildCacheFolder = Cache.getCache(CACHE_BUILD_NAME).toPath().resolve(getEnvPathComponent(testEnvironFile)).resolve(povLabel).toAbsolutePath();
+            buildCacheFolder = Cache.getCache(CACHE_BUILD_NAME).toPath().resolve(getEnvPathComponent(testEnviron)).resolve(povLabel).toAbsolutePath();
         } catch (Exception x) {
-            throw new RuntimeException("Could not hash environment file contents", x);
+            throw new RuntimeException("Could not hash environment contents", x);
         }
         LOGGER.info("verified projects will be symlinked from {} to cached built projects under {}", verificationProjectInstancesFolderFinal, buildCacheFolder);
         assert verificationProjectInstancesFolderFinal!=null;
@@ -650,8 +658,8 @@ public class Main {
         return service;
     }
 
-    private static String getEnvPathComponent(@Nullable Path envFile) throws IOException, NoSuchAlgorithmException {
-        return "env-" + Utils.md5HashFile(envFile);
+    private static String getEnvPathComponent(Properties properties) throws IOException, NoSuchAlgorithmException {
+        return "env-" + Utils.md5HashProperties(properties);
     }
 
     private static void printHelp(Options options) {

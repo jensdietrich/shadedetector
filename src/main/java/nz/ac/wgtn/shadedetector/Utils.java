@@ -29,6 +29,8 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
+import java.util.Properties;
+import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -258,6 +260,32 @@ public class Utils {
     @NotNull
     public static String md5HashFile(@Nullable Path path) throws IOException, NoSuchAlgorithmException {
         byte[] data = path == null ? new byte[0] : Files.readAllBytes(path);
+        return md5Hash(data);
+    }
+
+    /**
+     * MD5-hash a set of properties (including defaults), being careful to maintain constant iteration order.
+     * ({@link Properties#store} does not guarantee the order, and also prepends a comment that
+     * changes with the current time, making it useless.)
+     */
+    public static String md5HashProperties(Properties properties) throws IOException, NoSuchAlgorithmException {
+        TreeSet<String> sortedSet = new TreeSet<>(properties.stringPropertyNames());
+
+        byte[] data;
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream(); PrintWriter writer = new PrintWriter(baos)) {
+            for (String key : sortedSet) {
+                writer.print(key + "=" + properties.getProperty(key) + "\n");
+            }
+
+            writer.flush();
+            data = baos.toByteArray();
+        }
+
+        return md5Hash(data);
+    }
+
+    @NotNull
+    private static String md5Hash(byte[] data) throws NoSuchAlgorithmException {
         MessageDigest digest = MessageDigest.getInstance("MD5");
         byte[] md5 = digest.digest(data);
 
@@ -268,5 +296,25 @@ public class Utils {
             hexBuilder.append(unsignedByte < 16 ? "0" : "").append(Integer.toHexString(unsignedByte));
         }
         return hexBuilder.toString();
+    }
+
+    /**
+     * Try to determine a suitable {@code JAVA_HOME} path for a given JDK version on the current platform.
+     * @param jdkVersion a short numeric string like "8" or "11"
+     * @return a suitable value for {@code JAVA_HOME} environment variable
+     * @throws RuntimeException if it cannot guess a suitable path
+     */
+    public static String getJavaHomeForJdkVersion(String jdkVersion) {
+        //TODO: Add support for other OSes
+        String osName = System.getProperty("os.name");
+        if (osName.toLowerCase().contains("linux")) {
+            //TODO: Parsing the output of `update-java-alternatives --list` would be better
+            String guessedPath = "/usr/lib/jvm/java-1." + jdkVersion + ".0-openjdk-amd64";
+            if (Files.isDirectory(Path.of(guessedPath))) {
+                return guessedPath;
+            }
+        }
+
+        throw new RuntimeException("Could not determine a JAVA_HOME path for jdkVersion=" + jdkVersion + " on OS " + osName);
     }
 }

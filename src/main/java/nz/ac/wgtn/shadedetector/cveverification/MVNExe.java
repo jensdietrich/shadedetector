@@ -42,6 +42,8 @@ public class MVNExe {
     }
 
     public static ProcessResult mvnCleanCompile(Path projectFolder,Properties environment) throws Exception {
+        // Based on its implementation (https://guava.dev/releases/23.0/api/docs/src-html/com/google/common/collect/Maps.html#line.1399),
+        // Maps.fromProperties() calls Properties::propertyNames() and thus *will* include non-overridden default properties.
         return mvn(projectFolder, Maps.newHashMap(Maps.fromProperties(environment)),"clean","compile");
     }
 

@@ -29,6 +29,8 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
+import java.util.Properties;
+import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -258,6 +260,31 @@ public class Utils {
     @NotNull
     public static String md5HashFile(@Nullable Path path) throws IOException, NoSuchAlgorithmException {
         byte[] data = path == null ? new byte[0] : Files.readAllBytes(path);
+        return md5Hash(data);
+    }
+
+    /**
+     * MD5-hash a set of properties (including defaults), being careful to maintain constant iteration order.
+     * ({@link Properties#store} does not guarantee the order, and also prepends a comment that
+     * changes with the current time, making it useless.)
+     */
+    public static String md5HashProperties(Properties properties) throws IOException, NoSuchAlgorithmException {
+        TreeSet<String> sortedSet = new TreeSet<>(properties.stringPropertyNames());
+
+        byte[] data;
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream(); PrintWriter writer = new PrintWriter(baos, true)) {
+            for (String key : sortedSet) {
+                writer.print(key + "=" + properties.getProperty(key) + "\n");
+            }
+
+            data = baos.toByteArray();
+        }
+
+        return md5Hash(data);
+    }
+
+    @NotNull
+    private static String md5Hash(byte[] data) throws NoSuchAlgorithmException {
         MessageDigest digest = MessageDigest.getInstance("MD5");
         byte[] md5 = digest.digest(data);
 

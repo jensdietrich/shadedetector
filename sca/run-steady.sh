@@ -2,7 +2,7 @@
 
 # run steady sca on all folders
 root=$(pwd)
-for d in ./*/ ; do
+for d in CVE-*/*/ ; do
   cd $d;
   echo "running steady  on ${d}"
   mvn org.eclipse.steady:plugin-maven:3.2.5:app 

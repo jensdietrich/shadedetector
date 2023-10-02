@@ -2,7 +2,7 @@
 
 # TODO: configure a specific (manually updated) vulnerability DB 
 root=$(pwd)
-for d in ./*/ ; do
+for d in CVE-*/*/ ; do
   cd $d;
   mkdir -p scan-results/grype
   echo "running grype analysis on ${d}"

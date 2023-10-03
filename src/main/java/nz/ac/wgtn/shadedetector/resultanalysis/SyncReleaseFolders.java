@@ -1,10 +1,12 @@
 package nz.ac.wgtn.shadedetector.resultanalysis;
 
 import com.google.common.base.Preconditions;
+import com.google.common.io.MoreFiles;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -16,8 +18,8 @@ import java.util.stream.Stream;
 public class SyncReleaseFolders {
 
 
-    public static final boolean SIMULATE_REMOVAL = true ;
-    public static final boolean SIMULATE_ADDITION = true ;
+    public static boolean SIMULATE_REMOVAL = true ;
+    public static boolean SIMULATE_ADDITION = true ;
 
     /**
      *
@@ -26,11 +28,22 @@ public class SyncReleaseFolders {
      */
     public static void main (String[] args) throws Exception {
 
-        Preconditions.checkState(args.length==2,"two arguments required -- the original repo, and the one to sync (add/remove)");
+        int firstNonOptionArg;
+        for (firstNonOptionArg = 0; firstNonOptionArg < args.length && args[firstNonOptionArg].startsWith("--"); ++firstNonOptionArg) {
+            if (args[firstNonOptionArg].equals("--add")) {
+                SIMULATE_ADDITION = false;
+            } else if (args[firstNonOptionArg].equals("--remove")) {
+                SIMULATE_REMOVAL = false;
+            } else {
+                throw new IllegalArgumentException("Unknown option '" + args[firstNonOptionArg] + "'");
+            }
+        }
 
-        File repo1 = new File(args[0]);
+        Preconditions.checkState(args.length == firstNonOptionArg + 2,"two arguments required -- the original repo, and the one to sync (add/remove)");
+
+        File repo1 = new File(args[firstNonOptionArg]);
         Preconditions.checkState(repo1.exists());
-        File repo2 = new File(args[1]);
+        File repo2 = new File(args[firstNonOptionArg + 1]);
         Preconditions.checkState(repo2.exists());
 
         List<String> CVEs = Stream.of(repo2.listFiles())
@@ -46,12 +59,12 @@ public class SyncReleaseFolders {
         for (String cve:CVEs) {
             File cveDir1 = new File(repo1,cve);
             File cveDir2 = new File(repo2,cve);
-            Set<File> projectsFolders1 = Stream.of(cveDir1.listFiles())
+            Set<File> projectsFolders1 = Stream.of(Optional.ofNullable(cveDir1.listFiles()).orElse(new File[0]))
                 .filter(f -> f.isDirectory())
                 .filter(f -> !f.isHidden())
                 .collect(Collectors.toSet());
 
-            Set<File> projectsFolders2 = Stream.of(cveDir2.listFiles())
+            Set<File> projectsFolders2 = Stream.of(Optional.ofNullable(cveDir2.listFiles()).orElse(new File[0]))
                     .filter(f -> f.isDirectory())
                     .filter(f -> !f.isHidden())
                     .collect(Collectors.toSet());

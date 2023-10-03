@@ -1,5 +1,7 @@
 # Makefile for compiling SCA tool reports under scan-results for each vulnerable artifact using snyk, Steady, OWASP Dependency Check and grype.
 #
+# If file modification times have been lost (e.g., after git checkout), run "make touch_existing_reports" first to ensure that make sees any existing reports as already up-to-date.
+#
 # "make" or "make all" will compile missing/out-of-date reports for all 4 tools for every vulnerable artifact
 # "make all.snyk_reports" (etc.) will do the same, but restricted to snyk reports (etc.)
 # "make CVE-1234-5678/some__artifact__version/scan-results/snyk/snyk-report.json" will compile just that report, if missing or out-of-date
@@ -7,7 +9,7 @@
 #
 # Tips: "make -n" to see what would happen, "make -k" to keep going if there are errors, "make -B" to force (re)generation, "make -j 4" to run up to 4 tasks concurrently
 
-.PHONY: all all.snyk_reports all.steady_reports all.owaspdepcheck_reports all.grype_reports
+.PHONY: all all.snyk_reports all.steady_reports all.owaspdepcheck_reports all.grype_reports touch_existing_reports
 
 ALL_ARTIFACTS = $(wildcard CVE-*/*)
 
@@ -26,6 +28,10 @@ all.steady_reports: $(ALL_STEADY_REPORTS)
 all.owaspdepcheck_reports: $(ALL_OWASPDEPCHECK_REPORTS)
 
 all.grype_reports: $(ALL_GRYPE_REPORTS)
+
+# After file modification times are lost (e.g., after git checkout), run this first to ensure that make sees any existing reports as already up-to-date.
+touch_existing_reports:
+	find . -path './CVE-*/*/scan-results/*/*-report.json' | xargs touch
 
 %/scan-results/snyk/snyk-report.json: %/pom.xml
 	@echo "Running snyk to generate $@..."

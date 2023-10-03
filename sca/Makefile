@@ -30,20 +30,20 @@ all.grype_reports: $(ALL_GRYPE_REPORTS)
 %/scan-results/snyk/snyk-report.json: %/pom.xml
 	@echo "Running snyk to generate $@..."
 	mkdir -p $(@D)
-	cd $* && snyk test --json --json-file-output=$(@:$*/%=%)
+	-cd $* && snyk test --json --json-file-output=$(@:$*/%=%)
 
 %/scan-results/steady/vulas-report.json: %/pom.xml
 	@echo "Running Steady to generate $@..."
 	mkdir -p $(@D)
-	cd $* && mvn org.eclipse.steady:plugin-maven:3.2.5:app && mvn org.eclipse.steady:plugin-maven:3.2.5:report -Dvulas.report.reportDir=$(abspath $(@D))
+	-cd $* && mvn org.eclipse.steady:plugin-maven:3.2.5:app && mvn org.eclipse.steady:plugin-maven:3.2.5:report -Dvulas.report.reportDir=$(abspath $(@D))
 
 %/scan-results/dependency-check/dependency-check-report.json: %/pom.xml
 	@echo "Running OWASP Dependency Check to generate $@..."
 	mkdir -p $(@D)
-	cd $* && dependency-check -scan . -f JSON -o $(@D:$*/%=%) -prettyPrint
+	-cd $* && dependency-check -scan . -f JSON -o $(@D:$*/%=%) -prettyPrint
 
 # Env vars turn off all online activity
 %/scan-results/grype/grype-report.json: %/pom.xml
 	@echo "Running grype to generate $@..."
 	mkdir -p $(@D)
-	cd $* && GRYPE_CHECK_FOR_APP_UPDATE=0 GRYPE_DB_AUTO_UPDATE=0 GRYPE_DB_MAX_ALLOWED_BUILT_AGE=1000000h grype --output json --file $(@:$*/%=%) .
+	-cd $* && GRYPE_CHECK_FOR_APP_UPDATE=0 GRYPE_DB_AUTO_UPDATE=0 GRYPE_DB_MAX_ALLOWED_BUILT_AGE=1000000h grype --output json --file $(@:$*/%=%) .

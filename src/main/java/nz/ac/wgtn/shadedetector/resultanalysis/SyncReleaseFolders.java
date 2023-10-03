@@ -18,8 +18,8 @@ import java.util.stream.Stream;
 public class SyncReleaseFolders {
 
 
-    public static final boolean SIMULATE_REMOVAL = true ;
-    public static final boolean SIMULATE_ADDITION = true ;
+    public static boolean SIMULATE_REMOVAL = true ;
+    public static boolean SIMULATE_ADDITION = true ;
 
     /**
      *
@@ -28,11 +28,22 @@ public class SyncReleaseFolders {
      */
     public static void main (String[] args) throws Exception {
 
-        Preconditions.checkState(args.length==2,"two arguments required -- the original repo, and the one to sync (add/remove)");
+        int firstNonOptionArg;
+        for (firstNonOptionArg = 0; firstNonOptionArg < args.length && args[firstNonOptionArg].startsWith("--"); ++firstNonOptionArg) {
+            if (args[firstNonOptionArg].equals("--add")) {
+                SIMULATE_ADDITION = false;
+            } else if (args[firstNonOptionArg].equals("--remove")) {
+                SIMULATE_REMOVAL = false;
+            } else {
+                throw new IllegalArgumentException("Unknown option '" + args[firstNonOptionArg] + "'");
+            }
+        }
 
-        File repo1 = new File(args[0]);
+        Preconditions.checkState(args.length == firstNonOptionArg + 2,"two arguments required -- the original repo, and the one to sync (add/remove)");
+
+        File repo1 = new File(args[firstNonOptionArg]);
         Preconditions.checkState(repo1.exists());
-        File repo2 = new File(args[1]);
+        File repo2 = new File(args[firstNonOptionArg + 1]);
         Preconditions.checkState(repo2.exists());
 
         List<String> CVEs = Stream.of(repo2.listFiles())

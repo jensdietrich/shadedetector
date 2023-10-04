@@ -48,7 +48,7 @@ touch_existing_reports:
 %/scan-results/dependency-check/dependency-check-report.json: %/pom.xml
 	@echo "Running OWASP Dependency Check to generate $@..."
 	mkdir -p $(@D)
-	-cd $* && dependency-check -scan . -f JSON -o $(@D:$*/%=%) -prettyPrint
+	-cd $* && mvn org.owasp:dependency-check-maven:8.2.1:check -Dformat=json -DprettyPrint=true -Dodc.outputDirectory=$(@D:$*/%=%)
 
 # Env vars turn off all online activity
 %/scan-results/grype/grype-report.json: %/pom.xml

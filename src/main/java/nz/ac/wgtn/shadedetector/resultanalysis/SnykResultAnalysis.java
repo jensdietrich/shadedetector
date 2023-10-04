@@ -30,10 +30,15 @@ public class SnykResultAnalysis implements SCAResultAnalysis {
             JsonArray vulnerabilities = root.getAsJsonObject().get("vulnerabilities").getAsJsonArray();
             for (int i=0;i<vulnerabilities.size();i++) {
                 JsonObject nextVul = vulnerabilities.get(i).getAsJsonObject();
-                JsonObject identifiers = nextVul.get("identifiers").getAsJsonObject();
-                JsonArray ids = identifiers.get("CVE").getAsJsonArray();
-                for (JsonElement id:ids) {
-                    cves.add(id.getAsString());
+                // "identifiers" may be missing, e.g., for vulns with 'type: "license"'
+                JsonObject identifiers = nextVul.getAsJsonObject("identifiers");
+                if (identifiers != null) {
+                    JsonArray ids = identifiers.getAsJsonArray("CVE");
+                    if (ids != null) {
+                        for (JsonElement id : ids) {
+                            cves.add(id.getAsString());
+                        }
+                    }
                 }
             }
             return cves;

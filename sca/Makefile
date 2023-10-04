@@ -45,10 +45,12 @@ touch_existing_reports:
 	mv $(@D)/vulas-report.json $@
 	rm -f $(@D)/vulas-report.{x,ht}ml
 
+# Maven's Dependency Check can fail due to rate-limiting, in which case we effectively delete the file to enable easy rerunning.
 %/scan-results/dependency-check/dependency-check-report.json: %/pom.xml
 	@echo "Running OWASP Dependency Check to generate $@..."
 	mkdir -p $(@D)
 	-cd $* && mvn org.owasp:dependency-check-maven:8.2.1:check -Dformat=json -DprettyPrint=true -Dodc.outputDirectory=$(@D:$*/%=%)
+	( if [ `jq '.scanInfo.analysisExceptions|length' $@` -ne 0 ]; then mv $@ $@.FAILED_WITH_EXCEPTIONS; exit 1; fi )
 
 # Env vars turn off all online activity
 %/scan-results/grype/grype-report.json: %/pom.xml

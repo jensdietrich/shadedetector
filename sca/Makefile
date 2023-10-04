@@ -14,7 +14,7 @@
 ALL_ARTIFACTS = $(wildcard CVE-*/*)
 
 ALL_SNYK_REPORTS = $(foreach f,$(ALL_ARTIFACTS),$(f)/scan-results/snyk/snyk-report.json)
-ALL_STEADY_REPORTS = $(foreach f,$(ALL_ARTIFACTS),$(f)/scan-results/steady/vulas-report.json)
+ALL_STEADY_REPORTS = $(foreach f,$(ALL_ARTIFACTS),$(f)/scan-results/steady/steady-report.json)
 ALL_OWASPDEPCHECK_REPORTS = $(foreach f,$(ALL_ARTIFACTS),$(f)/scan-results/dependency-check/dependency-check-report.json)
 ALL_GRYPE_REPORTS = $(foreach f,$(ALL_ARTIFACTS),$(f)/scan-results/grype/grype-report.json)
 
@@ -38,10 +38,12 @@ touch_existing_reports:
 	mkdir -p $(@D)
 	-cd $* && snyk test --json --json-file-output=$(@:$*/%=%)
 
-%/scan-results/steady/vulas-report.json: %/pom.xml
+%/scan-results/steady/steady-report.json: %/pom.xml
 	@echo "Running Steady to generate $@..."
 	mkdir -p $(@D)
 	-cd $* && mvn org.eclipse.steady:plugin-maven:3.2.5:app && mvn org.eclipse.steady:plugin-maven:3.2.5:report -Dvulas.report.reportDir=$(abspath $(@D))
+	mv $(@D)/vulas-report.json $@
+	rm -f $(@D)/vulas-report.{x,ht}ml
 
 %/scan-results/dependency-check/dependency-check-report.json: %/pom.xml
 	@echo "Running OWASP Dependency Check to generate $@..."

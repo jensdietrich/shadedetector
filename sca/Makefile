@@ -11,7 +11,10 @@
 
 .PHONY: all all.snyk_reports all.steady_reports all.owaspdepcheck_reports all.grype_reports touch_existing_reports
 
-ALL_ARTIFACTS = $(wildcard CVE-*/*)
+# Find artifacts at any depth in the subdir hierarchy
+#ALL_ARTIFACTS = $(wildcard CVE-*/*)
+ALL_POMS = $(shell find . -name pom.xml)
+ALL_ARTIFACTS = $(ALL_POMS:%/pom.xml=%)
 
 ALL_SNYK_REPORTS = $(foreach f,$(ALL_ARTIFACTS),$(f)/scan-results/snyk/snyk-report.json)
 ALL_STEADY_REPORTS = $(foreach f,$(ALL_ARTIFACTS),$(f)/scan-results/steady/steady-report.json)
@@ -31,7 +34,7 @@ all.grype_reports: $(ALL_GRYPE_REPORTS)
 
 # After file modification times are lost (e.g., after git checkout), run this first to ensure that make sees any existing reports as already up-to-date.
 touch_existing_reports:
-	find . -path './CVE-*/*/scan-results/*/*-report.json' | xargs touch
+	find . -path '*/scan-results/*/*-report.json' | xargs touch
 
 %/scan-results/snyk/snyk-report.json: %/pom.xml
 	@echo "Running snyk to generate $@..."

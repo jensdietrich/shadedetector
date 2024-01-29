@@ -19,5 +19,5 @@ ls -d "$@" |
 	perl -lne 's|/$||; s|.*/||; ($g, $a, $v) = split /__/; print "{\"name\": \"$g:$a\", \"versions\": [\"$v\"]}"' |
 	# GitHub can't handle multiple versions per affected package; workaround per https://github.com/github/advisory-database/pull/2841#issuecomment-1787952423 is to make a separate affected package for each version
 	#jq -s 'group_by(.name) | {"affected": [.[] | {"package": {"ecosystem": "Maven", "name": .[0].name}, "versions": [.[].versions[]]}]}' | 		# Group all versions with same groupId and artifactId
-	jq -s '{"affected": [.[] | {"package": {"ecosystem": "Maven", "name": .name}, "versions": [.versions]}]}' | 
+	jq -s '{"affected": [.[] | {"package": {"ecosystem": "Maven", "name": .name}, "versions": .versions}]}' | 
 	jq -j -s '.[0] + {"modified": "'"$NOW"'", "affected": (.[0].affected + .[1].affected), "references": (.[0].references + [{"type": "EVIDENCE", "url": "https://github.com/jensdietrich/xshady-release/tree/main/'"$CVE"'"}, {"type": "WEB", "url": "https://arxiv.org/pdf/2306.05534.pdf"}])}' "$EXISTING_GHSA" -								# Merge into existing GHSA JSON

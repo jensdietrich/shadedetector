@@ -113,6 +113,8 @@ if (@ARGV && $ARGV =~ /^--/) {
 
 die "Valid modes: " . join(", ", @validModes) if !grep { $mode eq $_ } @validModes;
 
+my $paperUrl = "https://arxiv.org/pdf/2306.05534.pdf";
+
 my %versions;
 while (<>) {
 	if (my ($cve, $g, $a, $v, $result) = m!^.* tests in \S+/([^/]+)/(\S+?)__(\S+?)__(\S+?): .* -> vuln is (present|absent)$!) {
@@ -166,6 +168,9 @@ foreach my $cve (sort keys %versions) {
 	}
 
 	if ($mode eq '--output-json' && @affected) {
-		print '{"affected": [', join(", ", @affected), "]}\n";
+		my $modifiedTime = `date --iso-8601=seconds --utc | sed -e 's/+00:00/Z/'`;
+		chomp $modifiedTime;
+		my $cveUrl = "https://github.com/jensdietrich/xshady-release/tree/main/$cve";
+		print '{"modified": "' . $modifiedTime . '", "aliases": ["' . $cve . '"], "affected": [', join(", ", @affected), '], "references": [{"type": "EVIDENCE", "url": "' . $cveUrl . '"}, {"type": "WEB", "url": "' . $paperUrl . "\"}]}\n";
 	}
 }

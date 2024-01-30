@@ -6,7 +6,8 @@ use warnings;
 # Call with two refs to arrays of numbers.
 sub compareNatural($$);		# Forward declaration
 sub compareNatural($$) {
-	my ($x, $y) = @_;
+	#my ($x, $y) = @_;
+	my ($x, $y) = ([ @{$_[0]} ], [ @{$_[1]} ]);		# Need to copy to prevent shift messing up the originals!
 	if (!@$x) {
 		return !@$y ? 0 : -1;
 	}
@@ -41,11 +42,15 @@ sub getMavenMetadataXmlUrlFor($$) {
 sub checkMavenMetadataVersionsAreSensiblyOrdered($) {
 	my ($mapVersionToPosition) = @_;
 	my @original;
-	foreach (each %$mapVersionToPosition) {
-		$original[$_->[0]] = extractSimpleVersionArray($_->[1]);
+	foreach (keys %$mapVersionToPosition) {
+		#print STDERR "EACH: " . join(",", @$_) . "\n";	#DEBUG
+		#print STDERR "EACH: $_\n";	#DEBUG
+		$original[$mapVersionToPosition->{$_}] = [ extractSimpleVersionArray($_) ];
 	}
 
+	print STDERR "\@original:\n", join("\n", map { join(".", @$_) } @original), "\n";	#DEBUG
 	my @sorted = sort compareNatural @original;
+	print STDERR "\@sorted:\n", join("\n", map { join(".", @$_) } @sorted), "\n";	#DEBUG
 
 	for (my $i = 0; $i < @original; ++$i) {
 		die "Missing version info for position $i!" if !defined $original[$i];
@@ -104,8 +109,23 @@ sub compareByMavenMetadata($$$$) {
 }
 
 # Main program
+my %versions;
 while (<>) {
 	if (my ($cve, $g, $a, $v, $result) = m!^.* tests in \S+/([^/]+)/(\S+?)__(\S+?)__(\S+?): .* -> vuln is (present|absent)$!) {
-		print join("\t", $cve, "$g:$a", $v, $result), "\n";
+		#print join("\t", $cve, "$g:$a", $v, $result), "\n";
+		push @{$versions{$cve}{$g}{$a}}, [$v, $result];
+	}
+}
+
+foreach my $cve (sort keys %versions) {
+	foreach my $g (sort keys %{$versions{$cve}}) {
+		foreach my $art (sort keys %{$versions{$cve}{$g}}) {
+			my @sortedVersions = sort { compareByMavenMetadata($g, $art, $a->[0], $b->[0]) } @{$versions{$cve}{$g}{$art}};
+			#my @sortedVersions = @{$versions{$cve}{$g}{$art}};		#DEBUG: First try without any sorting
+			foreach my $vAndResult (@sortedVersions) {
+				my ($v, $result) = @$vAndResult;
+				print join("\t", $cve, "$g:$art", $v, $result), "\n";
+			}
+		}
 	}
 }

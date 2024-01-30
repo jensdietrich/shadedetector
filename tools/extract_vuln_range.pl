@@ -43,14 +43,10 @@ sub checkMavenMetadataVersionsAreSensiblyOrdered($) {
 	my ($mapVersionToPosition) = @_;
 	my @original;
 	foreach (keys %$mapVersionToPosition) {
-		#print STDERR "EACH: " . join(",", @$_) . "\n";	#DEBUG
-		#print STDERR "EACH: $_\n";	#DEBUG
 		$original[$mapVersionToPosition->{$_}] = [ extractSimpleVersionArray($_) ];
 	}
 
-	print STDERR "\@original:\n", join("\n", map { join(".", @$_) } @original), "\n";	#DEBUG
 	my @sorted = sort compareNatural @original;
-	print STDERR "\@sorted:\n", join("\n", map { join(".", @$_) } @sorted), "\n";	#DEBUG
 
 	for (my $i = 0; $i < @original; ++$i) {
 		die "Missing version info for position $i!" if !defined $original[$i];
@@ -64,22 +60,21 @@ sub downloadMavenMetadataXml($$) {
 	my ($g, $a) = @_;
 	my $url = getMavenMetadataXmlUrlFor($g, $a);
 
-	#my @versions;
 	my %mapVersionToPosition;
 	my $i = 0;
 	local $_;
-	print STDERR "Downloading metadata $url for $g:$a...\n";		#DEBUG
+	print STDERR "Downloading metadata $url for $g:$a...\n";
 	foreach (`curl $url`) {
 		if (m|<version>(.*)</version>\s*$|) {
 			#push @versions, $1;
 			$mapVersionToPosition{$1} = $i++;
 		}
 	}
-	print STDERR "Extracted metadata on $i versions from $url for $g:$a...\n";		#DEBUG
+	print STDERR "Extracted metadata on $i versions from $url for $g:$a...\n";
 
 	checkMavenMetadataVersionsAreSensiblyOrdered(\%mapVersionToPosition);		# Dies if it "looks wrong"
+	print STDERR "Version order from $url for $g:$a 'looks right'.\n";
 
-	#return @versions;
 	return \%mapVersionToPosition;
 }
 
@@ -121,7 +116,6 @@ foreach my $cve (sort keys %versions) {
 	foreach my $g (sort keys %{$versions{$cve}}) {
 		foreach my $art (sort keys %{$versions{$cve}{$g}}) {
 			my @sortedVersions = sort { compareByMavenMetadata($g, $art, $a->[0], $b->[0]) } @{$versions{$cve}{$g}{$art}};
-			#my @sortedVersions = @{$versions{$cve}{$g}{$art}};		#DEBUG: First try without any sorting
 			foreach my $vAndResult (@sortedVersions) {
 				my ($v, $result) = @$vAndResult;
 				print join("\t", $cve, "$g:$art", $v, $result), "\n";

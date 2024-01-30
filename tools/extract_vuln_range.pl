@@ -155,13 +155,12 @@ foreach my $cve (sort keys %versions) {
 			if (@events) {
 				my $package = '{"package": {"ecosystem": "Maven", "name": "' . "$g:$art" . '"}, ';
 				if ($someVersionWasFixed) {
-					$package .= '"ranges": [{"type": "ECOSYSTEM", "events": [' . join(", ", @events) . ']}]';
+					push @affected, $package . '"ranges": [{"type": "ECOSYSTEM", "events": [' . join(", ", @events) . ']}]}';
 				} else {
-					$package .= '"versions": [' . join(", ", map { "\"$_\"" } @vulnVersions) . ']';
+					# GitHub can't handle multiple versions in the "versions" array. Workaround: Make per-version affected packages (suggested by darakian: https://github.com/github/advisory-database/pull/2841#issuecomment-1787952423)
+					#$package .= '"versions": [' . join(", ", map { "\"$_\"" } @vulnVersions) . ']';
+					push @affected, map { $package . '"versions": [' . "\"$_\"]}" } @vulnVersions;
 				}
-
-				$package .= '}';
-				push @affected, $package;
 			}
 		}
 	}

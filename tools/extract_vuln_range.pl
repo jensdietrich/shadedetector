@@ -104,6 +104,15 @@ sub compareByMavenMetadata($$$$) {
 }
 
 # Main program
+
+my @validModes = qw/--output-json --output-tsv/;
+my $mode = "--output-json";
+if (@ARGV && $ARGV =~ /^--/) {
+	$mode = shift;
+}
+
+die "Valid modes: " . join(", ", @validModes) if !grep { $mode eq $_ } @validModes;
+
 my %versions;
 while (<>) {
 	if (my ($cve, $g, $a, $v, $result) = m!^.* tests in \S+/([^/]+)/(\S+?)__(\S+?)__(\S+?): .* -> vuln is (present|absent)$!) {
@@ -113,13 +122,51 @@ while (<>) {
 }
 
 foreach my $cve (sort keys %versions) {
+	my @affected = ();
 	foreach my $g (sort keys %{$versions{$cve}}) {
 		foreach my $art (sort keys %{$versions{$cve}{$g}}) {
 			my @sortedVersions = sort { compareByMavenMetadata($g, $art, $a->[0], $b->[0]) } @{$versions{$cve}{$g}{$art}};
+			my $vulnIntroduced;
+			my $someVersionWasFixed = 0;
+			my @events = ();
+			my @vulnVersions = ();
 			foreach my $vAndResult (@sortedVersions) {
 				my ($v, $result) = @$vAndResult;
-				print join("\t", $cve, "$g:$art", $v, $result), "\n";
+				if ($mode eq '--output-tsv') {
+					print join("\t", $cve, "$g:$art", $v, $result), "\n";
+				} elsif ($mode eq '--output-json') {
+					if ($result eq 'present') {
+						if (!defined $vulnIntroduced) {
+							$vulnIntroduced = $v;
+							push @events, '{"introduced": "' . $v . '"}';
+						}
+
+						push @vulnVersions, $v;
+					}
+
+					if (defined($vulnIntroduced) && $result eq 'absent') {
+						$vulnIntroduced = undef;
+						push @events, '{"fixed": "' . $v . '"}';
+						$someVersionWasFixed = 1;
+					}
+				}
+			}
+
+			if (@events) {
+				my $package = '{"package": {"ecosystem": "Maven", "name": "' . "$g:$art" . '"}, ';
+				if ($someVersionWasFixed) {
+					$package .= '"ranges": [{"type": "ECOSYSTEM", "events": [' . join(", ", @events) . ']}]';
+				} else {
+					$package .= '"versions": [' . join(", ", map { "\"$_\"" } @vulnVersions) . ']';
+				}
+
+				$package .= '}';
+				push @affected, $package;
 			}
 		}
+	}
+
+	if ($mode eq '--output-json' && @affected) {
+		print '{"affected": [', join(", ", @affected), "]}\n";
 	}
 }

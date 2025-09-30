@@ -6,6 +6,8 @@ The tool takes the coordinates of Maven artifact (**GAV** - **G**roupId + **A**r
 and will infer and report a list of artifacts that are cloning / shading the input artifact, and are also exposed to the same vulnerability. For each such artifact,
 a TPOV is constructed from the original TPOV, proving the presence of the vulnerability.
 
+This is described in more detail in this paper: [Jens Dietrich, Shawn Rasheed, Alexander Jordan, Tim White: On the Security Blind Spots of Software Composition Analysis. SCORED'24.](https://arxiv.org/abs/2306.05534)
+
 ## Testable Proof-of-vulnerability Projects (TPOV)
 
 ### The Structure of a TPOV
